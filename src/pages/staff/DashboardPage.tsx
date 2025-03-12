@@ -1,9 +1,9 @@
-
 import { Bell, Calendar, FileClock, FileText, Home, Users } from "lucide-react";
 import DashboardLayout from "@/layouts/DashboardLayout";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Link } from "react-router-dom";
+import { Badge } from "@/components/ui/badge";
 
 export default function StaffDashboard() {
   // Mock data for quick statistics
