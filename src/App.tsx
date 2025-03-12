@@ -6,26 +6,21 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import RoleSelection from "./pages/auth/RoleSelection";
 import LoginForm from "./pages/auth/LoginForm";
-import DashboardLayout from "./layouts/DashboardLayout";
 
-// Placeholder dashboard components
-const StudentDashboard = () => (
-  <DashboardLayout role="student">
-    <h1 className="text-2xl font-bold">Student Dashboard</h1>
-  </DashboardLayout>
-);
+// Student Pages
+import StudentDashboard from "./pages/student/DashboardPage";
+import StudentAnnouncementsPage from "./pages/student/AnnouncementsPage";
+import StudentLeaveManagementPage from "./pages/student/LeaveManagementPage";
 
-const StaffDashboard = () => (
-  <DashboardLayout role="staff">
-    <h1 className="text-2xl font-bold">Staff Dashboard</h1>
-  </DashboardLayout>
-);
+// Staff Pages
+import StaffDashboard from "./pages/staff/DashboardPage";
+import StaffAnnouncementsPage from "./pages/staff/AnnouncementsPage";
+import StaffLeaveManagementPage from "./pages/staff/LeaveManagementPage";
 
-const AdminDashboard = () => (
-  <DashboardLayout role="admin">
-    <h1 className="text-2xl font-bold">Admin Dashboard</h1>
-  </DashboardLayout>
-);
+// Admin Pages
+import AdminDashboard from "./pages/admin/DashboardPage";
+import AdminAnnouncementsPage from "./pages/admin/AnnouncementsPage";
+import AdminLeaveManagementPage from "./pages/admin/LeaveManagementPage";
 
 const queryClient = new QueryClient();
 
@@ -43,10 +38,20 @@ const App = () => (
           <Route path="/auth/staff/login" element={<LoginForm role="staff" />} />
           <Route path="/auth/admin/login" element={<LoginForm role="admin" />} />
           
-          {/* Dashboard Routes */}
+          {/* Student Routes */}
           <Route path="/student/dashboard" element={<StudentDashboard />} />
+          <Route path="/student/announcements" element={<StudentAnnouncementsPage />} />
+          <Route path="/student/leave" element={<StudentLeaveManagementPage />} />
+          
+          {/* Staff Routes */}
           <Route path="/staff/dashboard" element={<StaffDashboard />} />
+          <Route path="/staff/announcements" element={<StaffAnnouncementsPage />} />
+          <Route path="/staff/leave" element={<StaffLeaveManagementPage />} />
+          
+          {/* Admin Routes */}
           <Route path="/admin/dashboard" element={<AdminDashboard />} />
+          <Route path="/admin/announcements" element={<AdminAnnouncementsPage />} />
+          <Route path="/admin/leave" element={<AdminLeaveManagementPage />} />
         </Routes>
       </BrowserRouter>
     </TooltipProvider>
