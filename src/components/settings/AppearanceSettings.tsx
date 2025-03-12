@@ -1,19 +1,54 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
-import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
+import { Switch } from '@/components/ui/switch';
+import { Sun, Moon } from 'lucide-react';
+import { useToast } from '@/hooks/use-toast';
 
 export default function AppearanceSettings() {
-  const [theme, setTheme] = useState('system');
+  const [darkMode, setDarkMode] = useState(false);
   const [language, setLanguage] = useState('english');
+  const { toast } = useToast();
+
+  // Initialize theme from localStorage or system preference
+  useEffect(() => {
+    // Check if theme is stored in localStorage
+    const savedTheme = localStorage.getItem('theme');
+    
+    if (savedTheme === 'dark' || 
+        (!savedTheme && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+      setDarkMode(true);
+      document.documentElement.classList.add('dark');
+    } else {
+      setDarkMode(false);
+      document.documentElement.classList.remove('dark');
+    }
+  }, []);
+
+  // Apply theme change
+  const handleThemeChange = (checked: boolean) => {
+    setDarkMode(checked);
+    
+    if (checked) {
+      document.documentElement.classList.add('dark');
+      localStorage.setItem('theme', 'dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+      localStorage.setItem('theme', 'light');
+    }
+  };
 
   const handleSave = () => {
     // In a real app, you would save this to your backend and apply the theme
-    console.log('Saving appearance settings:', { theme, language });
-    // Show success toast or message
+    console.log('Saving appearance settings:', { darkMode, language });
+    
+    toast({
+      title: "Settings saved",
+      description: "Your appearance preferences have been updated.",
+    });
   };
 
   return (
@@ -33,54 +68,19 @@ export default function AppearanceSettings() {
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
-          <RadioGroup
-            defaultValue={theme}
-            onValueChange={setTheme}
-            className="grid grid-cols-3 gap-4"
-          >
-            <div>
-              <RadioGroupItem
-                value="light"
-                id="theme-light"
-                className="peer sr-only"
-              />
-              <Label
-                htmlFor="theme-light"
-                className="flex flex-col items-center justify-between rounded-md border-2 border-muted bg-white p-4 hover:bg-gray-100 hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary"
-              >
-                <div className="mb-3 h-16 w-16 rounded-md bg-[#f8fafc] shadow-sm" />
-                <p className="text-center text-sm font-medium">Light</p>
-              </Label>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-2">
+              <Sun className="h-5 w-5 text-muted-foreground" />
+              <Label htmlFor="theme-toggle">Light / Dark Mode</Label>
+              <Moon className="h-5 w-5 text-muted-foreground" />
             </div>
-            <div>
-              <RadioGroupItem
-                value="dark"
-                id="theme-dark"
-                className="peer sr-only"
-              />
-              <Label
-                htmlFor="theme-dark"
-                className="flex flex-col items-center justify-between rounded-md border-2 border-muted bg-white p-4 hover:bg-gray-100 hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary"
-              >
-                <div className="mb-3 h-16 w-16 rounded-md bg-[#1e293b] shadow-sm" />
-                <p className="text-center text-sm font-medium">Dark</p>
-              </Label>
-            </div>
-            <div>
-              <RadioGroupItem
-                value="system"
-                id="theme-system"
-                className="peer sr-only"
-              />
-              <Label
-                htmlFor="theme-system"
-                className="flex flex-col items-center justify-between rounded-md border-2 border-muted bg-white p-4 hover:bg-gray-100 hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary"
-              >
-                <div className="mb-3 h-16 w-16 rounded-md bg-gradient-to-br from-[#f8fafc] to-[#1e293b] shadow-sm" />
-                <p className="text-center text-sm font-medium">System</p>
-              </Label>
-            </div>
-          </RadioGroup>
+            <Switch
+              id="theme-toggle"
+              checked={darkMode}
+              onCheckedChange={handleThemeChange}
+              aria-label="Toggle dark mode"
+            />
+          </div>
         </CardContent>
       </Card>
 
