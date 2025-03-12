@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -61,10 +60,15 @@ export default function UserManagementSettings() {
   const [searchQuery, setSearchQuery] = useState('');
   const [filterRole, setFilterRole] = useState('all');
   const [isAddUserOpen, setIsAddUserOpen] = useState(false);
-  const [newUser, setNewUser] = useState({
+  const [newUser, setNewUser] = useState<{
+    name: string;
+    email: string;
+    role: 'student' | 'staff' | 'admin';
+    id: string;
+  }>({
     name: '',
     email: '',
-    role: 'student' as const,
+    role: 'student',
     id: '',
   });
   
