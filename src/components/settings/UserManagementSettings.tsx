@@ -17,9 +17,41 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 
+// Define proper types for our user data
+type BaseUser = {
+  id: number;
+  name: string;
+  email: string;
+  role: 'student' | 'staff' | 'admin';
+  status: 'active' | 'inactive';
+}
+
+type StudentUser = BaseUser & {
+  role: 'student';
+  studentId: string;
+  staffId?: undefined;
+  adminId?: undefined;
+}
+
+type StaffUser = BaseUser & {
+  role: 'staff';
+  staffId: string;
+  studentId?: undefined;
+  adminId?: undefined;
+}
+
+type AdminUser = BaseUser & {
+  role: 'admin';
+  adminId: string;
+  studentId?: undefined;
+  staffId?: undefined;
+}
+
+type User = StudentUser | StaffUser | AdminUser;
+
 export default function UserManagementSettings() {
-  // Mock users data
-  const [users, setUsers] = useState([
+  // Mock users data with proper typing
+  const [users, setUsers] = useState<User[]>([
     { id: 1, name: 'John Doe', email: 'john.doe@unisync.edu', role: 'student', status: 'active', studentId: 'STU12345' },
     { id: 2, name: 'Jane Smith', email: 'jane.smith@unisync.edu', role: 'staff', status: 'active', staffId: 'FAC54321' },
     { id: 3, name: 'Robert Johnson', email: 'robert.johnson@unisync.edu', role: 'admin', status: 'active', adminId: 'ADM98765' },
@@ -32,7 +64,7 @@ export default function UserManagementSettings() {
   const [newUser, setNewUser] = useState({
     name: '',
     email: '',
-    role: 'student',
+    role: 'student' as const,
     id: '',
   });
   
@@ -54,18 +86,41 @@ export default function UserManagementSettings() {
   const handleAddUser = () => {
     // In a real app, you would call an API to create the user
     console.log('Adding new user:', newUser);
-    // Mock adding to the list
+    
+    // Create a proper user object based on the role
     const newId = Math.max(...users.map(u => u.id)) + 1;
-    setUsers([...users, { 
-      id: newId, 
-      name: newUser.name, 
-      email: newUser.email, 
-      role: newUser.role, 
-      status: 'active',
-      studentId: newUser.role === 'student' ? newUser.id : undefined,
-      staffId: newUser.role === 'staff' ? newUser.id : undefined,
-      adminId: newUser.role === 'admin' ? newUser.id : undefined,
-    }]);
+    let userToAdd: User;
+    
+    if (newUser.role === 'student') {
+      userToAdd = {
+        id: newId,
+        name: newUser.name,
+        email: newUser.email,
+        role: 'student',
+        status: 'active',
+        studentId: newUser.id
+      };
+    } else if (newUser.role === 'staff') {
+      userToAdd = {
+        id: newId,
+        name: newUser.name,
+        email: newUser.email,
+        role: 'staff',
+        status: 'active',
+        staffId: newUser.id
+      };
+    } else {
+      userToAdd = {
+        id: newId,
+        name: newUser.name,
+        email: newUser.email,
+        role: 'admin',
+        status: 'active',
+        adminId: newUser.id
+      };
+    }
+    
+    setUsers([...users, userToAdd]);
     
     // Reset form
     setNewUser({
@@ -146,7 +201,7 @@ export default function UserManagementSettings() {
                   <Label htmlFor="role">Role</Label>
                   <Select 
                     value={newUser.role} 
-                    onValueChange={(value) => setNewUser({...newUser, role: value})}
+                    onValueChange={(value: 'student' | 'staff' | 'admin') => setNewUser({...newUser, role: value})}
                   >
                     <SelectTrigger id="role">
                       <SelectValue placeholder="Select role" />
