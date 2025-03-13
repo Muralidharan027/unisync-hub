@@ -1,4 +1,3 @@
-
 import { Bell, Calendar, FileClock, Users } from "lucide-react";
 import DashboardLayout from "@/layouts/DashboardLayout";
 import { Button } from "@/components/ui/button";
@@ -6,6 +5,14 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Link } from "react-router-dom";
 import { Badge } from "@/components/ui/badge";
 import { useEffect, useState } from "react";
+import { format } from "date-fns";
+
+declare global {
+  interface Window {
+    globalLeaveRequests?: any[];
+    globalAnnouncements?: any[];
+  }
+}
 
 export default function AdminDashboard() {
   const [stats, setStats] = useState([
@@ -18,27 +25,22 @@ export default function AdminDashboard() {
   const [pendingRequests, setPendingRequests] = useState([]);
   const [recentAnnouncements, setRecentAnnouncements] = useState([]);
 
-  // Load data from global store if available
   useEffect(() => {
-    // Count pending requests
     const pendingCount = window.globalLeaveRequests ? 
       window.globalLeaveRequests.filter(req => req.status === "pending" || req.status === "acknowledged").length : 0;
     
-    // Update stats with real data
     setStats(prev => prev.map(stat => 
       stat.title === "Pending Requests" ? { ...stat, value: pendingCount.toString() } : stat
     ));
     
-    // Get pending requests
     if (window.globalLeaveRequests) {
       const pendingReqs = window.globalLeaveRequests
         .filter(req => req.status === "pending" || req.status === "acknowledged")
-        .slice(0, 3); // Limit to 3 for display
+        .slice(0, 3);
       
       setPendingRequests(pendingReqs);
     }
     
-    // Check for global announcements
     if (window.globalAnnouncements) {
       setRecentAnnouncements(window.globalAnnouncements.slice(0, 3));
     }
@@ -65,7 +67,6 @@ export default function AdminDashboard() {
           </div>
         </div>
 
-        {/* Quick Stats */}
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
           {stats.map((stat) => (
             <Card key={stat.title}>
@@ -84,9 +85,7 @@ export default function AdminDashboard() {
           ))}
         </div>
 
-        {/* Grid of Real-time Activity */}
         <div className="grid gap-4 md:grid-cols-2">
-          {/* Pending Requests */}
           <Card>
             <CardHeader>
               <CardTitle>Pending Requests</CardTitle>
@@ -144,7 +143,6 @@ export default function AdminDashboard() {
             </CardFooter>
           </Card>
 
-          {/* Recent Announcements */}
           <Card>
             <CardHeader>
               <CardTitle>Recent Announcements</CardTitle>
