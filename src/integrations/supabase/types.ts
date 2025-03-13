@@ -50,30 +50,6 @@ export type Database = {
           },
         ]
       }
-      available_student_ids: {
-        Row: {
-          claimed_by: string | null
-          created_at: string
-          id: string
-          is_claimed: boolean | null
-          student_id: string
-        }
-        Insert: {
-          claimed_by?: string | null
-          created_at?: string
-          id?: string
-          is_claimed?: boolean | null
-          student_id: string
-        }
-        Update: {
-          claimed_by?: string | null
-          created_at?: string
-          id?: string
-          is_claimed?: boolean | null
-          student_id?: string
-        }
-        Relationships: []
-      }
       leave_requests: {
         Row: {
           approver_id: string | null

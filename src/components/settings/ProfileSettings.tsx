@@ -6,7 +6,6 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
@@ -19,8 +18,6 @@ export default function ProfileSettings({ role }: ProfileSettingsProps) {
   const { profile, user } = useAuth();
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
-  const [availableIds, setAvailableIds] = useState<{ id: string; student_id: string }[]>([]);
-  const [selectedId, setSelectedId] = useState<string>('');
   
   const [formData, setFormData] = useState({
     name: '',
@@ -40,94 +37,11 @@ export default function ProfileSettings({ role }: ProfileSettingsProps) {
         id: profile.student_id || profile.staff_id || profile.admin_id || '',
       });
     }
-    
-    // Fetch available student IDs if user is a student and doesn't have an ID yet
-    if (role === 'student' && profile && !profile.student_id) {
-      fetchAvailableStudentIds();
-    }
-  }, [profile, role]);
-
-  const fetchAvailableStudentIds = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('available_student_ids')
-        .select('id, student_id')
-        .eq('is_claimed', false);
-        
-      if (error) throw error;
-      
-      setAvailableIds(data || []);
-    } catch (error) {
-      console.error('Error fetching available student IDs:', error);
-      toast({
-        title: 'Error',
-        description: 'Could not load available student IDs',
-        variant: 'destructive',
-      });
-    }
-  };
+  }, [profile]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
-  };
-
-  const handleClaimStudentId = async () => {
-    if (!selectedId || !user) return;
-    
-    setLoading(true);
-    
-    try {
-      // Start a transaction
-      // 1. Mark the ID as claimed in the available_student_ids table
-      const { error: claimError } = await supabase
-        .from('available_student_ids')
-        .update({ 
-          is_claimed: true,
-          claimed_by: user.id 
-        })
-        .eq('id', selectedId);
-        
-      if (claimError) throw claimError;
-      
-      // 2. Get the student_id value from the selected ID
-      const { data: idData, error: idError } = await supabase
-        .from('available_student_ids')
-        .select('student_id')
-        .eq('id', selectedId)
-        .single();
-        
-      if (idError) throw idError;
-      
-      // 3. Update the profile with the claimed student ID
-      const { error: profileError } = await supabase
-        .from('profiles')
-        .update({ 
-          student_id: idData.student_id,
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', user.id);
-        
-      if (profileError) throw profileError;
-      
-      // Update local state
-      setFormData(prev => ({ ...prev, id: idData.student_id }));
-      
-      toast({
-        title: 'Success',
-        description: `Student ID ${idData.student_id} has been assigned to your profile`,
-      });
-      
-    } catch (error: any) {
-      console.error('Error claiming student ID:', error);
-      toast({
-        title: 'Error claiming student ID',
-        description: error.message || 'An error occurred while claiming the student ID',
-        variant: 'destructive',
-      });
-    } finally {
-      setLoading(false);
-    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -222,76 +136,6 @@ export default function ProfileSettings({ role }: ProfileSettingsProps) {
     }
   };
 
-  // Function to render the student ID section based on whether the user has an ID already
-  const renderStudentIdSection = () => {
-    if (role !== 'student') {
-      return (
-        <div className="space-y-2">
-          <Label htmlFor="id">{role === 'staff' ? 'Staff' : 'Admin'} ID</Label>
-          <Input 
-            id="id" 
-            name="id" 
-            value={formData.id} 
-            onChange={handleChange} 
-          />
-        </div>
-      );
-    }
-    
-    // For students with an existing ID
-    if (formData.id) {
-      return (
-        <div className="space-y-2">
-          <Label htmlFor="id">Student ID</Label>
-          <Input 
-            id="id" 
-            name="id" 
-            value={formData.id} 
-            readOnly 
-            className="bg-gray-100 border border-gray-300" 
-          />
-          <p className="text-xs text-muted-foreground">Your student ID cannot be changed.</p>
-        </div>
-      );
-    }
-    
-    // For students without an ID yet
-    return (
-      <div className="space-y-4">
-        <div className="space-y-2">
-          <Label htmlFor="student-id-select">Select a Student ID</Label>
-          <div className="flex flex-col space-y-2">
-            <Select onValueChange={setSelectedId} value={selectedId}>
-              <SelectTrigger>
-                <SelectValue placeholder="Select an available ID" />
-              </SelectTrigger>
-              <SelectContent>
-                {availableIds.length === 0 ? (
-                  <SelectItem value="none" disabled>No IDs available</SelectItem>
-                ) : (
-                  availableIds.map((item) => (
-                    <SelectItem key={item.id} value={item.id}>{item.student_id}</SelectItem>
-                  ))
-                )}
-              </SelectContent>
-            </Select>
-            <Button 
-              type="button" 
-              onClick={handleClaimStudentId} 
-              disabled={!selectedId || loading}
-              className="w-full md:w-auto mt-2"
-            >
-              {loading ? 'Claiming...' : 'Claim This ID'}
-            </Button>
-          </div>
-          <p className="text-xs text-muted-foreground">
-            You must claim a student ID to complete your profile. Once claimed, it cannot be changed.
-          </p>
-        </div>
-      </div>
-    );
-  };
-
   return (
     <div className="space-y-6">
       <div>
@@ -373,11 +217,24 @@ export default function ProfileSettings({ role }: ProfileSettingsProps) {
                   onChange={handleChange} 
                 />
               </div>
-              {renderStudentIdSection()}
+              <div className="space-y-2">
+                <Label htmlFor="id">{role === 'student' ? 'Student' : role === 'staff' ? 'Staff' : 'Admin'} ID</Label>
+                <Input 
+                  id="id" 
+                  name="id" 
+                  value={formData.id} 
+                  onChange={handleChange} 
+                  disabled={role === 'student' && !!formData.id} 
+                  className={role === 'student' && !!formData.id ? "bg-muted" : ""}
+                />
+                {role === 'student' && !!formData.id && (
+                  <p className="text-xs text-muted-foreground">Student ID cannot be changed once set.</p>
+                )}
+              </div>
             </div>
           </CardContent>
           <CardFooter>
-            <Button type="submit" disabled={loading || (role === 'student' && !formData.id)}>
+            <Button type="submit" disabled={loading}>
               {loading ? 'Saving...' : 'Save Changes'}
             </Button>
           </CardFooter>

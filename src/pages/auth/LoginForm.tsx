@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -14,7 +14,6 @@ import { Label } from "@/components/ui/label";
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { Loader2 } from 'lucide-react';
-import { Navigate, useNavigate } from 'react-router-dom';
 
 type LoginFormProps = {
   role: 'student' | 'staff' | 'admin';
@@ -23,17 +22,8 @@ type LoginFormProps = {
 export default function LoginForm({ role }: LoginFormProps) {
   const [email, setEmail] = useState('');
   const [id, setId] = useState('');
-  const [isSubmitting, setIsSubmitting] = useState(false);
   const { toast } = useToast();
-  const { signIn, loading, user, profile } = useAuth();
-  const navigate = useNavigate();
-
-  // If user is already logged in and has a profile, redirect to their dashboard
-  useEffect(() => {
-    if (user && profile) {
-      navigate(`/${profile.role}/dashboard`, { replace: true });
-    }
-  }, [user, profile, navigate]);
+  const { signIn, loading } = useAuth();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -47,14 +37,7 @@ export default function LoginForm({ role }: LoginFormProps) {
       return;
     }
     
-    setIsSubmitting(true);
-    try {
-      await signIn(email, id, role);
-    } finally {
-      setTimeout(() => {
-        setIsSubmitting(false);
-      }, 2000); // Ensure button isn't stuck in loading state
-    }
+    await signIn(email, id, role);
   };
 
   const getIdLabel = () => {
@@ -67,11 +50,6 @@ export default function LoginForm({ role }: LoginFormProps) {
         return 'Admin Code';
     }
   };
-
-  // If overall authentication loading is complete and we have a user and profile, redirect
-  if (!loading && user && profile) {
-    return <Navigate to={`/${profile.role}/dashboard`} replace />;
-  }
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900 p-4">
@@ -93,7 +71,6 @@ export default function LoginForm({ role }: LoginFormProps) {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
-                disabled={isSubmitting}
               />
             </div>
             <div className="space-y-2">
@@ -105,13 +82,12 @@ export default function LoginForm({ role }: LoginFormProps) {
                 value={id}
                 onChange={(e) => setId(e.target.value)}
                 required
-                disabled={isSubmitting}
               />
             </div>
           </CardContent>
           <CardFooter>
-            <Button type="submit" className="w-full" disabled={isSubmitting}>
-              {isSubmitting ? (
+            <Button type="submit" className="w-full" disabled={loading}>
+              {loading ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                   Signing in...
