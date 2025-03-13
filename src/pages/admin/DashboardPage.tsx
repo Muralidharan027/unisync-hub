@@ -1,3 +1,4 @@
+
 import { Bell, Calendar, FileClock, Users } from "lucide-react";
 import DashboardLayout from "@/layouts/DashboardLayout";
 import { Button } from "@/components/ui/button";
@@ -6,10 +7,12 @@ import { Link } from "react-router-dom";
 import { Badge } from "@/components/ui/badge";
 import { useEffect, useState } from "react";
 import { format } from "date-fns";
+import { LeaveRequest } from "@/components/leave/LeaveRequestCard";
 
+// Update Window interface to use LeaveRequest[] type
 declare global {
   interface Window {
-    globalLeaveRequests?: any[];
+    globalLeaveRequests: LeaveRequest[];
     globalAnnouncements?: any[];
   }
 }

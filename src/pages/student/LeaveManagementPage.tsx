@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { FileClock, FileText, PlusCircle } from "lucide-react";
 import { ModuleTabs } from "@/components/ui/module-tabs";
@@ -140,11 +139,4 @@ export default function StudentLeaveManagementPage() {
       </div>
     </DashboardLayout>
   );
-}
-
-// Add global type for TypeScript
-declare global {
-  interface Window {
-    globalLeaveRequests: LeaveRequest[];
-  }
 }
