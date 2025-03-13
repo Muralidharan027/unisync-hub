@@ -14,6 +14,7 @@ import { Label } from "@/components/ui/label";
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { Loader2 } from 'lucide-react';
+import { Navigate } from 'react-router-dom';
 
 type LoginFormProps = {
   role: 'student' | 'staff' | 'admin';
@@ -23,7 +24,12 @@ export default function LoginForm({ role }: LoginFormProps) {
   const [email, setEmail] = useState('');
   const [id, setId] = useState('');
   const { toast } = useToast();
-  const { signIn, loading } = useAuth();
+  const { signIn, loading, user, profile } = useAuth();
+
+  // If user is already logged in, redirect to their dashboard
+  if (user && profile) {
+    return <Navigate to={`/${profile.role}/dashboard`} replace />;
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -71,6 +77,7 @@ export default function LoginForm({ role }: LoginFormProps) {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
+                disabled={loading}
               />
             </div>
             <div className="space-y-2">
@@ -82,6 +89,7 @@ export default function LoginForm({ role }: LoginFormProps) {
                 value={id}
                 onChange={(e) => setId(e.target.value)}
                 required
+                disabled={loading}
               />
             </div>
           </CardContent>

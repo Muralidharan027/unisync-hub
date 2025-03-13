@@ -1,6 +1,8 @@
 
 import { Navigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
+import { useEffect } from "react";
+import { useToast } from "@/hooks/use-toast";
 
 type ProtectedRouteProps = {
   children: React.ReactNode;
@@ -9,6 +11,16 @@ type ProtectedRouteProps = {
 
 export default function ProtectedRoute({ children, role }: ProtectedRouteProps) {
   const { user, profile, loading } = useAuth();
+  const { toast } = useToast();
+
+  useEffect(() => {
+    if (!loading && !user) {
+      toast({
+        title: 'Authentication required',
+        description: 'Please sign in to access this page',
+      });
+    }
+  }, [loading, user, toast]);
 
   // While checking authentication status, show a loading state
   if (loading) {
@@ -26,6 +38,11 @@ export default function ProtectedRoute({ children, role }: ProtectedRouteProps) 
   
   // If authenticated but wrong role, redirect to appropriate dashboard
   if (profile && profile.role !== role) {
+    toast({
+      title: 'Access denied',
+      description: `You are logged in as ${profile.role}, not ${role}`,
+      variant: 'destructive',
+    });
     return <Navigate to={`/${profile.role}/dashboard`} replace />;
   }
 

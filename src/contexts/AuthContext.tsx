@@ -38,19 +38,29 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     // Get initial session
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      setUser(session?.user || null);
-      if (session?.user) {
-        fetchProfile(session.user.id);
-      } else {
+    const getInitialSession = async () => {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        setSession(session);
+        setUser(session?.user || null);
+        
+        if (session?.user) {
+          await fetchProfile(session.user.id);
+        } else {
+          setLoading(false);
+        }
+      } catch (error) {
+        console.error('Error getting initial session:', error);
         setLoading(false);
       }
-    });
+    };
+
+    getInitialSession();
 
     // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
+        console.log('Auth state changed:', event, session);
         setSession(session);
         setUser(session?.user || null);
         
@@ -71,6 +81,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   async function fetchProfile(userId: string) {
     try {
       setLoading(true);
+      console.log('Fetching profile for user:', userId);
+      
       const { data, error } = await supabase
         .from('profiles')
         .select('*')
@@ -78,12 +90,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         .single();
 
       if (error) {
+        console.error('Error fetching profile:', error);
         throw error;
       }
 
+      console.log('Profile fetched:', data);
       setProfile(data as Profile);
+      
+      // If we have a profile with a role, navigate to the appropriate dashboard
+      if (data && data.role) {
+        navigate(`/${data.role}/dashboard`, { replace: true });
+      }
     } catch (error) {
-      console.error('Error fetching profile:', error);
+      console.error('Error in fetchProfile:', error);
       toast({
         title: 'Error fetching profile',
         description: 'Please try signing in again',
@@ -97,15 +116,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const signIn = async (email: string, id: string, role: 'student' | 'staff' | 'admin') => {
     try {
       setLoading(true);
+      console.log('Signing in with:', { email, id, role });
       
       // In a real app, we would validate the ID against the user's records
-      // For now, we'll simply authenticate with magic link or password
+      // For now, we'll simply authenticate with password
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password: id, // Using ID as password for simplicity (not recommended for production)
       });
 
       if (error) {
+        console.log('Sign in error, attempting sign up:', error);
+        
         // If signin fails, try to create an account
         const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
           email,
@@ -126,19 +148,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           title: 'Account created',
           description: 'Your account has been created successfully',
         });
+        
+        // No need to navigate here as the onAuthStateChange listener will handle it
+      } else {
+        console.log('Sign in successful:', data);
+        
+        // Fetch profile will be called by onAuthStateChange
+        // No need to navigate here as onAuthStateChange will handle it
       }
-
-      // Redirect to appropriate dashboard
-      navigate(`/${role}/dashboard`);
     } catch (error: any) {
-      console.error('Error signing in:', error);
+      console.error('Error during authentication:', error);
+      setLoading(false);
       toast({
         title: 'Error signing in',
         description: error.message || 'Please check your credentials and try again',
         variant: 'destructive',
       });
-    } finally {
-      setLoading(false);
     }
   };
 
