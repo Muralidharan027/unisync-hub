@@ -53,22 +53,15 @@ export default function ProfileSettings({ role }: ProfileSettingsProps) {
         throw new Error('User is not authenticated');
       }
       
-      // Determine the ID field based on user role
-      const idField = role === 'student' ? 'student_id' : 
-                      role === 'staff' ? 'staff_id' : 'admin_id';
+      // In our mock auth system, we won't actually update Supabase
+      // This is just a placeholder for when we have real authentication
+      console.log('Would update profile with:', {
+        full_name: formData.name,
+        phone: formData.phone,
+        id_field: formData.id,
+      });
       
-      const { error } = await supabase
-        .from('profiles')
-        .update({
-          full_name: formData.name,
-          phone: formData.phone,
-          [idField]: formData.id,
-          updated_at: new Date().toISOString(),
-        })
-        .eq('id', user.id);
-
-      if (error) throw error;
-      
+      // Since we're using mock data, we'll just show a success message
       toast({
         title: 'Profile updated',
         description: 'Your profile has been updated successfully',
@@ -92,33 +85,12 @@ export default function ProfileSettings({ role }: ProfileSettingsProps) {
     setLoading(true);
     
     try {
-      // Upload file to Supabase Storage
-      const fileExt = file.name.split('.').pop();
-      const filePath = `${user.id}/avatar.${fileExt}`;
+      // Since we're using mock data, we'll just simulate a file upload
+      console.log('Would upload file:', file.name);
       
-      const { error: uploadError } = await supabase.storage
-        .from('avatars')
-        .upload(filePath, file, { upsert: true });
-        
-      if (uploadError) throw uploadError;
-      
-      // Get public URL
-      const { data } = supabase.storage
-        .from('avatars')
-        .getPublicUrl(filePath);
-        
-      const avatarUrl = data.publicUrl;
-      
-      // Update profile
-      const { error: updateError } = await supabase
-        .from('profiles')
-        .update({ avatar_url: avatarUrl })
-        .eq('id', user.id);
-        
-      if (updateError) throw updateError;
-      
-      // Update local state
-      setFormData(prev => ({ ...prev, profilePicture: avatarUrl }));
+      // Update local state with a fake URL to simulate the upload
+      const fakeUrl = URL.createObjectURL(file);
+      setFormData(prev => ({ ...prev, profilePicture: fakeUrl }));
       
       toast({
         title: 'Profile picture updated',
