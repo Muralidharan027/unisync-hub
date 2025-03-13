@@ -1,3 +1,4 @@
+
 import { ReactNode } from 'react';
 import { Bell, Home, LogOut, Settings, User } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
@@ -36,8 +37,15 @@ const DashboardLayout = ({ children, role }: DashboardLayoutProps) => {
             </Link>
             <div className="ml-auto flex items-center space-x-4">
               <Button variant="ghost" size="icon" asChild>
+                <Link to={`/${role}/dashboard`}>
+                  <Home className="h-5 w-5" />
+                  <span className="sr-only">Home</span>
+                </Link>
+              </Button>
+              <Button variant="ghost" size="icon" asChild>
                 <Link to={`/${role}/announcements`}>
                   <Bell className="h-5 w-5" />
+                  <span className="sr-only">Notifications</span>
                 </Link>
               </Button>
               <DropdownMenu>

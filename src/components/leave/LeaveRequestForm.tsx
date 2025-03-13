@@ -37,6 +37,7 @@ export interface LeaveRequestData {
   details: string;
   startDate: Date;
   endDate: Date;
+  periods?: number; // Added periods field for OD requests
 }
 
 const LeaveRequestForm = ({ 
@@ -49,6 +50,7 @@ const LeaveRequestForm = ({
   const [details, setDetails] = useState('');
   const [startDate, setStartDate] = useState<Date>(new Date());
   const [endDate, setEndDate] = useState<Date>(new Date());
+  const [periods, setPeriods] = useState<number>(1);
   const { toast } = useToast();
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -81,12 +83,22 @@ const LeaveRequestForm = ({
       return;
     }
 
+    if (type === 'od' && (periods < 1 || periods > 5)) {
+      toast({
+        title: "Invalid periods",
+        description: "Number of periods must be between 1 and 5",
+        variant: "destructive",
+      });
+      return;
+    }
+
     onSubmit({
       type,
       reason,
       details,
       startDate,
-      endDate
+      endDate,
+      ...(type === 'od' && { periods })
     });
   };
 
@@ -97,7 +109,8 @@ const LeaveRequestForm = ({
         reason,
         details,
         startDate,
-        endDate
+        endDate,
+        ...(type === 'od' && { periods })
       });
     }
   };
@@ -180,6 +193,27 @@ const LeaveRequestForm = ({
               </Popover>
             </div>
           </div>
+          
+          {type === 'od' && (
+            <div className="space-y-2">
+              <Label htmlFor="periods">Number of Periods/Hours (max 5)</Label>
+              <Select 
+                value={periods.toString()} 
+                onValueChange={(value) => setPeriods(parseInt(value))}
+              >
+                <SelectTrigger id="periods">
+                  <SelectValue placeholder="Select number of periods" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="1">1 Period</SelectItem>
+                  <SelectItem value="2">2 Periods</SelectItem>
+                  <SelectItem value="3">3 Periods</SelectItem>
+                  <SelectItem value="4">4 Periods</SelectItem>
+                  <SelectItem value="5">5 Periods</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          )}
           
           <div className="space-y-2">
             <Label htmlFor="reason">Reason</Label>

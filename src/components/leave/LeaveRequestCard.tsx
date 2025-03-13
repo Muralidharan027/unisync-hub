@@ -1,24 +1,22 @@
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card";
 import { format } from "date-fns";
-import { Download, ThumbsDown, ThumbsUp } from "lucide-react";
-import { LeaveType } from "./LeaveRequestForm";
-
-export type LeaveStatus = 'pending' | 'acknowledged' | 'approved' | 'rejected';
+import { Check, Download, X } from "lucide-react";
 
 export interface LeaveRequest {
   id: string;
-  type: LeaveType;
+  type: 'leave' | 'od';
   reason: string;
   details: string;
   startDate: Date;
   endDate: Date;
-  status: LeaveStatus;
+  status: 'pending' | 'approved' | 'rejected' | 'acknowledged';
   studentName: string;
   studentId: string;
   submittedAt: Date;
+  periods?: number; // Added periods for OD requests
 }
 
 interface LeaveRequestCardProps {
@@ -30,141 +28,156 @@ interface LeaveRequestCardProps {
   onDownload?: (id: string) => void;
 }
 
-const LeaveRequestCard = ({ 
-  request, 
-  role, 
-  onApprove, 
-  onReject, 
+const LeaveRequestCard = ({
+  request,
+  role,
+  onApprove,
+  onReject,
   onAcknowledge,
   onDownload
 }: LeaveRequestCardProps) => {
-  
-  const getStatusBadge = (status: LeaveStatus) => {
-    switch (status) {
-      case 'pending':
-        return <Badge variant="outline" className="bg-yellow-100 text-yellow-800 border-yellow-300">Pending</Badge>;
-      case 'acknowledged':
-        return <Badge variant="outline" className="bg-blue-100 text-blue-800 border-blue-300">Acknowledged</Badge>;
-      case 'approved':
-        return <Badge variant="outline" className="bg-green-100 text-green-800 border-green-300">Approved</Badge>;
-      case 'rejected':
-        return <Badge variant="outline" className="bg-red-100 text-red-800 border-red-300">Rejected</Badge>;
-      default:
-        return <Badge variant="outline">Unknown</Badge>;
-    }
+  const {
+    id,
+    type,
+    reason,
+    details,
+    startDate,
+    endDate,
+    status,
+    studentName,
+    submittedAt,
+    periods
+  } = request;
+
+  const statusColors = {
+    pending: "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300",
+    approved: "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300",
+    rejected: "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300",
+    acknowledged: "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300"
   };
 
-  const renderActions = () => {
-    if (role === 'student') {
-      if (request.status === 'approved' && onDownload) {
-        return (
-          <Button size="sm" variant="outline" onClick={() => onDownload(request.id)} className="gap-1">
-            <Download className="h-4 w-4" />
-            Download Letter
-          </Button>
-        );
-      }
-      return null;
-    }
-    
-    if (role === 'staff') {
-      if (request.type === 'leave' && request.status === 'pending') {
-        return (
-          <div className="flex gap-2">
-            {onApprove && (
-              <Button size="sm" variant="outline" className="gap-1 border-green-500 text-green-600 hover:bg-green-50" onClick={() => onApprove(request.id)}>
-                <ThumbsUp className="h-4 w-4" />
-                Approve
-              </Button>
-            )}
-            {onReject && (
-              <Button size="sm" variant="outline" className="gap-1 border-red-500 text-red-600 hover:bg-red-50" onClick={() => onReject(request.id)}>
-                <ThumbsDown className="h-4 w-4" />
-                Reject
-              </Button>
-            )}
-          </div>
-        );
-      }
-      
-      if (request.type === 'od' && request.status === 'pending' && onAcknowledge) {
-        return (
-          <Button size="sm" variant="outline" onClick={() => onAcknowledge(request.id)}>
-            Acknowledge
-          </Button>
-        );
-      }
-    }
-    
-    if (role === 'admin') {
-      if ((request.type === 'od' && request.status === 'acknowledged') || 
-          (request.type === 'leave' && request.status === 'pending')) {
-        return (
-          <div className="flex gap-2">
-            {onApprove && (
-              <Button size="sm" variant="outline" className="gap-1 border-green-500 text-green-600 hover:bg-green-50" onClick={() => onApprove(request.id)}>
-                <ThumbsUp className="h-4 w-4" />
-                Approve
-              </Button>
-            )}
-            {onReject && (
-              <Button size="sm" variant="outline" className="gap-1 border-red-500 text-red-600 hover:bg-red-50" onClick={() => onReject(request.id)}>
-                <ThumbsDown className="h-4 w-4" />
-                Reject
-              </Button>
-            )}
-          </div>
-        );
-      }
-    }
-    
-    return null;
-  };
+  const isOD = type === 'od';
   
   return (
-    <Card className="w-full mb-4 shadow-sm hover:shadow-md transition-shadow">
-      <CardHeader className="pb-2">
-        <div className="flex justify-between items-start">
-          <div className="flex items-center gap-2">
-            <Badge variant={request.type === 'leave' ? 'default' : 'secondary'}>
-              {request.type === 'leave' ? 'Leave' : 'OD'}
+    <Card className="mb-4">
+      <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-2">
+        <div>
+          <h3 className="font-semibold">
+            {isOD ? 'On Duty Request' : 'Leave Request'}
+            <Badge
+              variant="outline"
+              className={`ml-2 ${statusColors[status]}`}
+            >
+              {status}
             </Badge>
-            {getStatusBadge(request.status)}
-          </div>
-          <span className="text-sm text-muted-foreground">
-            Submitted: {format(request.submittedAt, 'MMM dd, yyyy')}
-          </span>
+          </h3>
+          <p className="text-sm text-muted-foreground">
+            Submitted on {format(new Date(submittedAt), "MMM dd, yyyy")}
+          </p>
         </div>
-        
-        <CardTitle className="mt-2 text-lg">
-          {request.reason}
-        </CardTitle>
       </CardHeader>
-      
-      <CardContent className="pb-2">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-2 mb-3 text-sm">
-          <div>
-            <span className="text-muted-foreground">From:</span>{' '}
-            {format(request.startDate, 'MMM dd, yyyy')}
-          </div>
-          <div>
-            <span className="text-muted-foreground">To:</span>{' '}
-            {format(request.endDate, 'MMM dd, yyyy')}
-          </div>
+      <CardContent className="text-sm">
+        <div className="mb-2">
+          <span className="font-medium">Student:</span> {studentName}
         </div>
-
-        <p className="text-sm">{request.details}</p>
         
-        {(role === 'staff' || role === 'admin') && (
-          <div className="mt-3 text-sm">
-            <span className="text-muted-foreground">Student:</span>{' '}
-            {request.studentName} ({request.studentId})
-          </div>
-        )}
+        <div className="mb-2">
+          <span className="font-medium">Period:</span>{" "}
+          {format(new Date(startDate), "MMM dd, yyyy")}
+          {" to "}
+          {format(new Date(endDate), "MMM dd, yyyy")}
+          {isOD && periods && (
+            <span className="ml-2">
+              ({periods} {periods === 1 ? 'period' : 'periods'})
+            </span>
+          )}
+        </div>
+        
+        <div className="mb-2">
+          <span className="font-medium">Reason:</span> {reason}
+        </div>
+        
+        <div className="mb-2">
+          <span className="font-medium">Details:</span> {details}
+        </div>
       </CardContent>
-      
-      <CardFooter className="pt-2">
-        {renderActions()}
+
+      <CardFooter className="flex justify-end gap-2">
+        {status === 'approved' && onDownload && (
+          <Button
+            onClick={() => onDownload(id)}
+            size="sm"
+            variant="outline"
+            className="flex items-center gap-1"
+          >
+            <Download className="h-4 w-4" />
+            Download
+          </Button>
+        )}
+        
+        {status === 'pending' && role === 'staff' && (
+          <>
+            {isOD && onAcknowledge && (
+              <Button
+                onClick={() => onAcknowledge(id)}
+                size="sm"
+                variant="outline"
+                className="flex items-center gap-1"
+              >
+                <Check className="h-4 w-4" />
+                Acknowledge
+              </Button>
+            )}
+            
+            {!isOD && onApprove && (
+              <Button
+                onClick={() => onApprove(id)}
+                size="sm"
+                className="bg-green-600 hover:bg-green-700 flex items-center gap-1"
+              >
+                <Check className="h-4 w-4" />
+                Approve
+              </Button>
+            )}
+            
+            {onReject && (
+              <Button
+                onClick={() => onReject(id)}
+                size="sm"
+                variant="destructive"
+                className="flex items-center gap-1"
+              >
+                <X className="h-4 w-4" />
+                Reject
+              </Button>
+            )}
+          </>
+        )}
+        
+        {(status === 'pending' || status === 'acknowledged') && role === 'admin' && onApprove && (
+          <>
+            <Button
+              onClick={() => onApprove(id)}
+              size="sm"
+              className="bg-green-600 hover:bg-green-700 flex items-center gap-1"
+            >
+              <Check className="h-4 w-4" />
+              Approve
+            </Button>
+            
+            {onReject && (
+              <Button
+                onClick={() => onReject(id)}
+                size="sm"
+                variant="destructive"
+                className="flex items-center gap-1"
+              >
+                <X className="h-4 w-4" />
+                Reject
+              </Button>
+            )}
+          </>
+        )}
       </CardFooter>
     </Card>
   );

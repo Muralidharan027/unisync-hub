@@ -11,32 +11,7 @@ import { useAuth } from "@/contexts/AuthContext";
 
 // Shared global store for real-time leave requests (simulating backend)
 if (!window.globalLeaveRequests) {
-  window.globalLeaveRequests = [
-    {
-      id: "1",
-      type: "leave",
-      reason: "Family function",
-      details: "Need to attend a family wedding in my hometown.",
-      startDate: new Date("2023-11-20"),
-      endDate: new Date("2023-11-22"),
-      status: "approved",
-      studentName: "Student User",
-      studentId: "STU001",
-      submittedAt: new Date("2023-11-10"),
-    },
-    {
-      id: "2",
-      type: "od",
-      reason: "Hackathon participation",
-      details: "Selected to represent the college in the national level hackathon at IIT Madras.",
-      startDate: new Date("2023-12-01"),
-      endDate: new Date("2023-12-03"),
-      status: "pending",
-      studentName: "Student User",
-      studentId: "STU001",
-      submittedAt: new Date("2023-11-15"),
-    }
-  ];
+  window.globalLeaveRequests = [];
 }
 
 export default function StudentLeaveManagementPage() {
@@ -95,6 +70,7 @@ export default function StudentLeaveManagementPage() {
         studentName: profile?.full_name || "Unknown Student",
         studentId: profile?.student_id || "Unknown ID",
         submittedAt: new Date(),
+        periods: data.type === 'od' ? data.periods : undefined
       };
       
       // Add to global store
