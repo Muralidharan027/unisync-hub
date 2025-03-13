@@ -11,6 +11,7 @@ type LeaveRequestsListProps = {
   onDownload?: (id: string) => void;
   onApprove?: (id: string) => void;
   onReject?: (id: string) => void;
+  onAcknowledge?: (id: string) => void;
 };
 
 const LeaveRequestsList = ({ 
@@ -18,7 +19,8 @@ const LeaveRequestsList = ({
   role, 
   onDownload,
   onApprove,
-  onReject 
+  onReject,
+  onAcknowledge
 }: LeaveRequestsListProps) => {
   if (requests.length === 0) {
     return (
@@ -53,6 +55,7 @@ const LeaveRequestsList = ({
           onDownload={onDownload}
           onApprove={onApprove}
           onReject={onReject}
+          onAcknowledge={onAcknowledge}
         />
       ))}
     </div>
