@@ -36,14 +36,20 @@ export default function ProtectedRoute({ children, role }: ProtectedRouteProps) 
     return <Navigate to={`/auth/${role}/login`} replace />;
   }
   
+  // If authenticated but no profile yet, we can still check user_metadata for the role
+  const userRole = user.user_metadata?.role as 'student' | 'staff' | 'admin' | undefined;
+  
+  // If we have a profile, use that. If not, fall back to user_metadata
+  const effectiveRole = profile?.role || userRole;
+  
   // If authenticated but wrong role, redirect to appropriate dashboard
-  if (profile && profile.role !== role) {
+  if (effectiveRole && effectiveRole !== role) {
     toast({
       title: 'Access denied',
-      description: `You are logged in as ${profile.role}, not ${role}`,
+      description: `You are logged in as ${effectiveRole}, not ${role}`,
       variant: 'destructive',
     });
-    return <Navigate to={`/${profile.role}/dashboard`} replace />;
+    return <Navigate to={`/${effectiveRole}/dashboard`} replace />;
   }
 
   // If authenticated and correct role, show the protected content

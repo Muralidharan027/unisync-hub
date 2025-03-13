@@ -40,6 +40,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // Get initial session
     const getInitialSession = async () => {
       try {
+        setLoading(true);
         const { data: { session } } = await supabase.auth.getSession();
         setSession(session);
         setUser(session?.user || null);
@@ -83,29 +84,59 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setLoading(true);
       console.log('Fetching profile for user:', userId);
       
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', userId)
-        .single();
-
-      if (error) {
-        console.error('Error fetching profile:', error);
-        throw error;
-      }
-
-      console.log('Profile fetched:', data);
-      setProfile(data as Profile);
+      // Instead of getting the profile from the database, let's use the user metadata
+      // This is a workaround for the RLS policy issue
+      const { data: { user } } = await supabase.auth.getUser();
       
-      // If we have a profile with a role, navigate to the appropriate dashboard
-      if (data && data.role) {
-        navigate(`/${data.role}/dashboard`, { replace: true });
+      if (!user) {
+        throw new Error('User not found');
+      }
+      
+      const role = user.user_metadata.role as 'student' | 'staff' | 'admin';
+      const profileData = {
+        id: user.id,
+        full_name: user.user_metadata.full_name,
+        avatar_url: null,
+        role: role,
+        email: user.email!,
+        student_id: null,
+        staff_id: null,
+        admin_id: null,
+        phone: null
+      };
+      
+      console.log('Profile created from user metadata:', profileData);
+      setProfile(profileData);
+      
+      // Try to get the actual profile data if possible
+      try {
+        const { data, error } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', userId)
+          .single();
+
+        if (error) {
+          console.warn('Error fetching profile from database:', error);
+          // Continue with the metadata-based profile
+        } else if (data) {
+          console.log('Profile fetched from database:', data);
+          setProfile(data as Profile);
+        }
+      } catch (dbError) {
+        console.warn('Database error when fetching profile:', dbError);
+        // Continue with the metadata-based profile
+      }
+      
+      // If we have a role, navigate to the appropriate dashboard
+      if (role) {
+        navigate(`/${role}/dashboard`, { replace: true });
       }
     } catch (error) {
       console.error('Error in fetchProfile:', error);
       toast({
         title: 'Error fetching profile',
-        description: 'Please try signing in again',
+        description: 'Using fallback profile data',
         variant: 'destructive',
       });
     } finally {
@@ -149,12 +180,34 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           description: 'Your account has been created successfully',
         });
         
-        // No need to navigate here as the onAuthStateChange listener will handle it
+        // Manually trigger navigation since the auth state may not change immediately
+        if (signUpData?.user) {
+          // Set a basic profile based on metadata if the signup was successful
+          setUser(signUpData.user);
+          setProfile({
+            id: signUpData.user.id,
+            full_name: email.split('@')[0],
+            avatar_url: null,
+            role: role,
+            email: email,
+            student_id: null,
+            staff_id: null,
+            admin_id: null,
+            phone: null
+          });
+          
+          navigate(`/${role}/dashboard`, { replace: true });
+          setLoading(false);
+        }
       } else {
         console.log('Sign in successful:', data);
-        
-        // Fetch profile will be called by onAuthStateChange
-        // No need to navigate here as onAuthStateChange will handle it
+        // Manually trigger navigation for immediate feedback
+        if (data?.user) {
+          const userRole = data.user.user_metadata.role as 'student' | 'staff' | 'admin';
+          if (userRole) {
+            navigate(`/${userRole}/dashboard`, { replace: true });
+          }
+        }
       }
     } catch (error: any) {
       console.error('Error during authentication:', error);
@@ -171,6 +224,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       setLoading(true);
       await supabase.auth.signOut();
+      setProfile(null);
+      setUser(null);
+      setSession(null);
       navigate('/');
       toast({
         title: 'Signed out',
