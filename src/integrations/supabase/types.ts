@@ -40,15 +40,7 @@ export type Database = {
           title?: string
           updated_at?: string
         }
-        Relationships: [
-          {
-            foreignKeyName: "announcements_author_id_fkey"
-            columns: ["author_id"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
       available_student_ids: {
         Row: {
@@ -114,62 +106,84 @@ export type Database = {
           updated_at?: string
           user_id?: string
         }
+        Relationships: []
+      }
+      profiles: {
+        Row: {
+          created_at: string | null
+          id: string
+          role: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          role: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          role?: string
+          user_id?: string
+        }
         Relationships: [
           {
-            foreignKeyName: "leave_requests_approver_id_fkey"
-            columns: ["approver_id"]
-            isOneToOne: false
-            referencedRelation: "profiles"
+            foreignKeyName: "profiles_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: true
+            referencedRelation: "users"
             referencedColumns: ["id"]
           },
+        ]
+      }
+      student_profiles: {
+        Row: {
+          created_at: string | null
+          id: string
+          profile_id: string
+          sub_role: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          profile_id: string
+          sub_role: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          profile_id?: string
+          sub_role?: string
+        }
+        Relationships: [
           {
-            foreignKeyName: "leave_requests_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: false
+            foreignKeyName: "student_profiles_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: true
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
         ]
       }
-      profiles: {
+      users: {
         Row: {
-          admin_id: string | null
-          avatar_url: string | null
-          created_at: string
+          created_at: string | null
           email: string
-          full_name: string | null
           id: string
-          phone: string | null
-          role: string
-          staff_id: string | null
-          student_id: string | null
-          updated_at: string
+          name: string
         }
         Insert: {
-          admin_id?: string | null
-          avatar_url?: string | null
-          created_at?: string
+          created_at?: string | null
           email: string
-          full_name?: string | null
-          id: string
-          phone?: string | null
-          role: string
-          staff_id?: string | null
-          student_id?: string | null
-          updated_at?: string
+          id?: string
+          name: string
         }
         Update: {
-          admin_id?: string | null
-          avatar_url?: string | null
-          created_at?: string
+          created_at?: string | null
           email?: string
-          full_name?: string | null
           id?: string
-          phone?: string | null
-          role?: string
-          staff_id?: string | null
-          student_id?: string | null
-          updated_at?: string
+          name?: string
         }
         Relationships: []
       }

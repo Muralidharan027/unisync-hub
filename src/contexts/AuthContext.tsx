@@ -10,10 +10,12 @@ const MOCK_USERS = {
     email: "student@example.com",
     profile: {
       id: "student-123",
-      role: "student",
+      role: "student" as UserRole,
       full_name: "Student User",
       email: "student@example.com",
       student_id: "STU001",
+      phone: null,
+      avatar_url: null,
     }
   },
   staff: {
@@ -21,10 +23,12 @@ const MOCK_USERS = {
     email: "staff@example.com",
     profile: {
       id: "staff-123",
-      role: "staff",
+      role: "staff" as UserRole,
       full_name: "Staff User",
       email: "staff@example.com",
       staff_id: "STA001",
+      phone: null,
+      avatar_url: null,
     }
   },
   admin: {
@@ -32,10 +36,12 @@ const MOCK_USERS = {
     email: "admin@example.com",
     profile: {
       id: "admin-123",
-      role: "admin",
+      role: "admin" as UserRole,
       full_name: "Admin User",
       email: "admin@example.com",
       admin_id: "ADM001",
+      phone: null,
+      avatar_url: null,
     }
   }
 };
@@ -51,6 +57,8 @@ type Profile = {
   student_id?: string;
   staff_id?: string;
   admin_id?: string;
+  phone?: string | null;
+  avatar_url?: string | null;
 };
 
 interface AuthContextType {
