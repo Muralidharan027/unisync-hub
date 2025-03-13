@@ -1,4 +1,3 @@
-
 import { Bell, Calendar, FileClock, Users } from "lucide-react";
 import DashboardLayout from "@/layouts/DashboardLayout";
 import { Button } from "@/components/ui/button";
@@ -9,13 +8,6 @@ import { useEffect, useState } from "react";
 import { format } from "date-fns";
 import { LeaveRequest } from "@/components/leave/LeaveRequestCard";
 import { getAnnouncements } from "@/store/announcements";
-
-// Update Window interface to use LeaveRequest[] type
-declare global {
-  interface Window {
-    globalLeaveRequests: LeaveRequest[];
-  }
-}
 
 export default function AdminDashboard() {
   const [stats, setStats] = useState([
@@ -255,7 +247,6 @@ export default function AdminDashboard() {
   );
 }
 
-// Helper functions for announcements
 const getCategoryColor = (category: string) => {
   switch (category) {
     case 'emergency':
@@ -276,7 +267,6 @@ const getCategoryName = (category: string) => {
   return category.charAt(0).toUpperCase() + category.slice(1);
 };
 
-// Helper for time formatting
 const formatDistanceToNow = (date: Date, options: any) => {
   return format(date, 'MMM dd, yyyy');
 };

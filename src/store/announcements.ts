@@ -1,5 +1,6 @@
 
 import { Announcement } from "@/components/announcements/AnnouncementCard";
+import { LeaveRequest } from "@/components/leave/LeaveRequestCard";
 
 // Initialize global announcements store if not exists
 if (typeof window !== 'undefined' && !window.globalAnnouncements) {

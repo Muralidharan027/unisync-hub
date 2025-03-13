@@ -9,7 +9,7 @@ import { LeaveRequest } from "@/components/leave/LeaveRequestCard";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
 
-// Initialize global store if not exists
+// Initialize global store if not exists, using the already declared interface from announcements.ts
 if (!window.globalLeaveRequests) {
   window.globalLeaveRequests = [];
 }
