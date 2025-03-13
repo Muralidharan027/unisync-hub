@@ -1,0 +1,5 @@
+
+project_id = "fahqlerywybttjinbanp"
+
+[api]
+schemas = ["public", "storage", "auth"]

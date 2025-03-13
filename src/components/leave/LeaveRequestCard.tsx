@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card";
 import { format } from "date-fns";
 import { Check, Download, X } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
 
 export interface LeaveRequest {
   id: string;
@@ -16,7 +17,7 @@ export interface LeaveRequest {
   studentName: string;
   studentId: string;
   submittedAt: Date;
-  periods?: number; // Added periods for OD requests
+  periods?: number; // For OD requests
 }
 
 interface LeaveRequestCardProps {
@@ -57,6 +58,40 @@ const LeaveRequestCard = ({
   };
 
   const isOD = type === 'od';
+  
+  const handleDownload = async () => {
+    if (onDownload) {
+      onDownload(id);
+      
+      try {
+        // Call the Supabase Edge Function to generate the PDF
+        const { data, error } = await supabase.functions.invoke('generate-pdf', {
+          body: { requestId: id }
+        });
+        
+        if (error) {
+          console.error('Error generating PDF:', error);
+          return;
+        }
+        
+        // Create a blob from the PDF data and download it
+        const blob = new Blob([data], { type: 'application/pdf' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        
+        a.href = url;
+        a.download = `${type}_request_${id}.pdf`;
+        document.body.appendChild(a);
+        a.click();
+        
+        // Clean up
+        URL.revokeObjectURL(url);
+        document.body.removeChild(a);
+      } catch (error) {
+        console.error('Error downloading PDF:', error);
+      }
+    }
+  };
   
   return (
     <Card className="mb-4">
@@ -105,7 +140,7 @@ const LeaveRequestCard = ({
       <CardFooter className="flex justify-end gap-2">
         {status === 'approved' && onDownload && (
           <Button
-            onClick={() => onDownload(id)}
+            onClick={handleDownload}
             size="sm"
             variant="outline"
             className="flex items-center gap-1"

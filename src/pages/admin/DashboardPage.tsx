@@ -5,65 +5,44 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Link } from "react-router-dom";
 import { Badge } from "@/components/ui/badge";
+import { useEffect, useState } from "react";
 
 export default function AdminDashboard() {
-  // Mock data for quick statistics
-  const stats = [
-    { title: "Total Students", value: "250", icon: <Users className="h-4 w-4" /> },
-    { title: "Total Staff", value: "45", icon: <Users className="h-4 w-4" /> },
-    { title: "Pending Requests", value: "12", icon: <FileClock className="h-4 w-4" /> },
-    { title: "Upcoming Events", value: "5", icon: <Calendar className="h-4 w-4" /> },
-  ];
+  const [stats, setStats] = useState([
+    { title: "Total Students", value: "0", icon: <Users className="h-4 w-4" /> },
+    { title: "Total Staff", value: "0", icon: <Users className="h-4 w-4" /> },
+    { title: "Pending Requests", value: "0", icon: <FileClock className="h-4 w-4" /> },
+    { title: "Upcoming Events", value: "0", icon: <Calendar className="h-4 w-4" /> },
+  ]);
 
-  // Mock data for pending requests
-  const pendingRequests = [
-    {
-      id: "1",
-      type: "leave",
-      reason: "Family function",
-      studentName: "John Doe",
-      date: "2023-11-20 to 2023-11-22",
-      status: "pending"
-    },
-    {
-      id: "2",
-      type: "od",
-      reason: "Hackathon participation",
-      studentName: "Jane Smith",
-      date: "2023-12-01 to 2023-12-03",
-      status: "acknowledged"
-    },
-    {
-      id: "3",
-      type: "od",
-      reason: "Workshop attendance",
-      studentName: "Emily Brown",
-      date: "2023-10-15",
-      status: "acknowledged"
-    },
-  ];
+  const [pendingRequests, setPendingRequests] = useState([]);
+  const [recentAnnouncements, setRecentAnnouncements] = useState([]);
 
-  // Mock data for recent announcements
-  const recentAnnouncements = [
-    { 
-      id: "1", 
-      title: "End Semester Examination Schedule", 
-      date: "2 days ago",
-      category: "important" 
-    },
-    { 
-      id: "2", 
-      title: "Campus Placement Drive", 
-      date: "1 week ago",
-      category: "placement" 
-    },
-    { 
-      id: "4", 
-      title: "Campus Power Shutdown", 
-      date: "10 hours ago",
-      category: "emergency" 
-    },
-  ];
+  // Load data from global store if available
+  useEffect(() => {
+    // Count pending requests
+    const pendingCount = window.globalLeaveRequests ? 
+      window.globalLeaveRequests.filter(req => req.status === "pending" || req.status === "acknowledged").length : 0;
+    
+    // Update stats with real data
+    setStats(prev => prev.map(stat => 
+      stat.title === "Pending Requests" ? { ...stat, value: pendingCount.toString() } : stat
+    ));
+    
+    // Get pending requests
+    if (window.globalLeaveRequests) {
+      const pendingReqs = window.globalLeaveRequests
+        .filter(req => req.status === "pending" || req.status === "acknowledged")
+        .slice(0, 3); // Limit to 3 for display
+      
+      setPendingRequests(pendingReqs);
+    }
+    
+    // Check for global announcements
+    if (window.globalAnnouncements) {
+      setRecentAnnouncements(window.globalAnnouncements.slice(0, 3));
+    }
+  }, []);
 
   return (
     <DashboardLayout role="admin">
@@ -105,7 +84,7 @@ export default function AdminDashboard() {
           ))}
         </div>
 
-        {/* Grid of Recent Activity */}
+        {/* Grid of Real-time Activity */}
         <div className="grid gap-4 md:grid-cols-2">
           {/* Pending Requests */}
           <Card>
@@ -116,41 +95,47 @@ export default function AdminDashboard() {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="space-y-2">
-                {pendingRequests.map((request) => (
-                  <div 
-                    key={request.id}
-                    className="flex items-center justify-between p-3 hover:bg-accent rounded-md border"
-                  >
-                    <div className="space-y-1">
-                      <p className="font-medium">
-                        {request.reason}
-                      </p>
-                      <p className="text-sm text-muted-foreground">
-                        {request.studentName} • {request.date}
-                      </p>
+              {pendingRequests.length > 0 ? (
+                <div className="space-y-2">
+                  {pendingRequests.map((request) => (
+                    <div 
+                      key={request.id}
+                      className="flex items-center justify-between p-3 hover:bg-accent rounded-md border"
+                    >
+                      <div className="space-y-1">
+                        <p className="font-medium">
+                          {request.reason}
+                        </p>
+                        <p className="text-sm text-muted-foreground">
+                          {request.studentName} • {format(new Date(request.startDate), "MMM dd")} to {format(new Date(request.endDate), "MMM dd")}
+                        </p>
+                      </div>
+                      <div className="flex gap-2">
+                        <Badge 
+                          variant="outline"
+                          className={request.type === 'leave' ? 'border-blue-500 text-blue-600' : 'border-purple-500 text-purple-600'}
+                        >
+                          {request.type === 'leave' ? 'Leave' : 'OD'}
+                        </Badge>
+                        <Badge 
+                          variant="outline"
+                          className={
+                            request.status === 'pending' 
+                              ? 'border-yellow-500 text-yellow-600' 
+                              : 'border-blue-500 text-blue-600'
+                          }
+                        >
+                          {request.status === 'pending' ? 'Pending' : 'Acknowledged'}
+                        </Badge>
+                      </div>
                     </div>
-                    <div className="flex gap-2">
-                      <Badge 
-                        variant="outline"
-                        className={request.type === 'leave' ? 'border-blue-500 text-blue-600' : 'border-purple-500 text-purple-600'}
-                      >
-                        {request.type === 'leave' ? 'Leave' : 'OD'}
-                      </Badge>
-                      <Badge 
-                        variant="outline"
-                        className={
-                          request.status === 'pending' 
-                            ? 'border-yellow-500 text-yellow-600' 
-                            : 'border-blue-500 text-blue-600'
-                        }
-                      >
-                        {request.status === 'pending' ? 'Pending' : 'Acknowledged'}
-                      </Badge>
-                    </div>
-                  </div>
-                ))}
-              </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-8 text-muted-foreground">
+                  No pending requests at this time.
+                </div>
+              )}
             </CardContent>
             <CardFooter>
               <Button variant="ghost" size="sm" asChild className="w-full">
@@ -168,30 +153,36 @@ export default function AdminDashboard() {
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-2">
-              {recentAnnouncements.map((announcement) => (
-                <div 
-                  key={announcement.id}
-                  className="flex items-center justify-between p-2 hover:bg-accent rounded-md"
-                >
-                  <div className="space-y-1">
-                    <p className="text-sm font-medium leading-none">
-                      {announcement.title}
-                    </p>
-                    <p className="text-xs text-muted-foreground">
-                      {announcement.date}
-                    </p>
+              {recentAnnouncements.length > 0 ? (
+                recentAnnouncements.map((announcement) => (
+                  <div 
+                    key={announcement.id}
+                    className="flex items-center justify-between p-2 hover:bg-accent rounded-md"
+                  >
+                    <div className="space-y-1">
+                      <p className="text-sm font-medium leading-none">
+                        {announcement.title}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        {announcement.date}
+                      </p>
+                    </div>
+                    <div className={`px-2 py-1 text-xs rounded ${
+                      announcement.category === 'important' 
+                        ? 'bg-yellow-100 text-yellow-800' 
+                        : announcement.category === 'emergency'
+                        ? 'bg-red-100 text-red-800'
+                        : 'bg-blue-100 text-blue-800'
+                    }`}>
+                      {announcement.category}
+                    </div>
                   </div>
-                  <div className={`px-2 py-1 text-xs rounded ${
-                    announcement.category === 'important' 
-                      ? 'bg-yellow-100 text-yellow-800' 
-                      : announcement.category === 'emergency'
-                      ? 'bg-red-100 text-red-800'
-                      : 'bg-blue-100 text-blue-800'
-                  }`}>
-                    {announcement.category}
-                  </div>
+                ))
+              ) : (
+                <div className="text-center py-8 text-muted-foreground">
+                  No announcements have been posted yet.
                 </div>
-              ))}
+              )}
             </CardContent>
             <CardFooter>
               <Button variant="ghost" size="sm" asChild className="w-full">
