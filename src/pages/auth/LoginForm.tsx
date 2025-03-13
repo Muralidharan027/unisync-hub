@@ -1,6 +1,5 @@
 
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -13,6 +12,8 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/contexts/AuthContext';
+import { Loader2 } from 'lucide-react';
 
 type LoginFormProps = {
   role: 'student' | 'staff' | 'admin';
@@ -21,19 +22,22 @@ type LoginFormProps = {
 export default function LoginForm({ role }: LoginFormProps) {
   const [email, setEmail] = useState('');
   const [id, setId] = useState('');
-  const navigate = useNavigate();
   const { toast } = useToast();
+  const { signIn, loading } = useAuth();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    // TODO: Implement actual authentication logic with Supabase
-    toast({
-      title: "Login Successful",
-      description: `Welcome back, ${role}!`,
-    });
+    if (!email || !id) {
+      toast({
+        title: "Missing information",
+        description: "Please fill in all fields",
+        variant: "destructive",
+      });
+      return;
+    }
     
-    navigate(`/${role}/dashboard`);
+    await signIn(email, id, role);
   };
 
   const getIdLabel = () => {
@@ -82,8 +86,15 @@ export default function LoginForm({ role }: LoginFormProps) {
             </div>
           </CardContent>
           <CardFooter>
-            <Button type="submit" className="w-full">
-              Login
+            <Button type="submit" className="w-full" disabled={loading}>
+              {loading ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Signing in...
+                </>
+              ) : (
+                "Login"
+              )}
             </Button>
           </CardFooter>
         </form>

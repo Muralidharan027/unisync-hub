@@ -1,47 +1,138 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { User } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
+import { useAuth } from '@/contexts/AuthContext';
+import { supabase } from '@/integrations/supabase/client';
+import { useToast } from '@/hooks/use-toast';
 
 type ProfileSettingsProps = {
   role: 'student' | 'staff' | 'admin';
 };
 
 export default function ProfileSettings({ role }: ProfileSettingsProps) {
-  // Mock user data - in a real app, this would come from your auth/data store
-  const [profile, setProfile] = useState({
-    name: role === 'student' ? 'John Doe' : role === 'staff' ? 'Dr. Jane Smith' : 'Prof. Robert Johnson',
-    email: `${role}@unisync.edu`,
-    phone: '+1 234 567 8900',
+  const { profile, user } = useAuth();
+  const { toast } = useToast();
+  const [loading, setLoading] = useState(false);
+  
+  const [formData, setFormData] = useState({
+    name: '',
+    email: '',
+    phone: '',
     profilePicture: '',
-    id: role === 'student' ? 'STU12345' : role === 'staff' ? 'FAC54321' : 'ADM98765',
+    id: '',
   });
+
+  useEffect(() => {
+    if (profile) {
+      setFormData({
+        name: profile.full_name || '',
+        email: profile.email || '',
+        phone: profile.phone || '',
+        profilePicture: profile.avatar_url || '',
+        id: profile.student_id || profile.staff_id || profile.admin_id || '',
+      });
+    }
+  }, [profile]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
-    setProfile(prev => ({ ...prev, [name]: value }));
+    setFormData(prev => ({ ...prev, [name]: value }));
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // In a real app, you would save this to your backend
-    console.log('Saving profile:', profile);
-    // Show success toast or message
+    setLoading(true);
+    
+    try {
+      if (!user || !profile) {
+        throw new Error('User is not authenticated');
+      }
+      
+      // Determine the ID field based on user role
+      const idField = role === 'student' ? 'student_id' : 
+                      role === 'staff' ? 'staff_id' : 'admin_id';
+      
+      const { error } = await supabase
+        .from('profiles')
+        .update({
+          full_name: formData.name,
+          phone: formData.phone,
+          [idField]: formData.id,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', user.id);
+
+      if (error) throw error;
+      
+      toast({
+        title: 'Profile updated',
+        description: 'Your profile has been updated successfully',
+      });
+    } catch (error: any) {
+      console.error('Error updating profile:', error);
+      toast({
+        title: 'Error updating profile',
+        description: error.message || 'An error occurred while updating your profile',
+        variant: 'destructive',
+      });
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const handleProfilePictureChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleProfilePictureChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file) {
-      // In a real app, you would upload this to your storage
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setProfile(prev => ({ ...prev, profilePicture: reader.result as string }));
-      };
-      reader.readAsDataURL(file);
+    if (!file || !user) return;
+    
+    setLoading(true);
+    
+    try {
+      // Upload file to Supabase Storage
+      const fileExt = file.name.split('.').pop();
+      const filePath = `${user.id}/avatar.${fileExt}`;
+      
+      const { error: uploadError } = await supabase.storage
+        .from('avatars')
+        .upload(filePath, file, { upsert: true });
+        
+      if (uploadError) throw uploadError;
+      
+      // Get public URL
+      const { data } = supabase.storage
+        .from('avatars')
+        .getPublicUrl(filePath);
+        
+      const avatarUrl = data.publicUrl;
+      
+      // Update profile
+      const { error: updateError } = await supabase
+        .from('profiles')
+        .update({ avatar_url: avatarUrl })
+        .eq('id', user.id);
+        
+      if (updateError) throw updateError;
+      
+      // Update local state
+      setFormData(prev => ({ ...prev, profilePicture: avatarUrl }));
+      
+      toast({
+        title: 'Profile picture updated',
+        description: 'Your profile picture has been updated successfully',
+      });
+    } catch (error: any) {
+      console.error('Error updating profile picture:', error);
+      toast({
+        title: 'Error updating profile picture',
+        description: error.message || 'An error occurred while updating your profile picture',
+        variant: 'destructive',
+      });
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -66,11 +157,11 @@ export default function ProfileSettings({ role }: ProfileSettingsProps) {
             <div className="flex flex-col items-center space-y-4 sm:flex-row sm:space-y-0 sm:space-x-4">
               <div className="relative">
                 <Avatar className="h-24 w-24">
-                  {profile.profilePicture ? (
-                    <AvatarImage src={profile.profilePicture} alt={profile.name} />
+                  {formData.profilePicture ? (
+                    <AvatarImage src={formData.profilePicture} alt={formData.name} />
                   ) : (
                     <AvatarFallback className="text-lg">
-                      {profile.name.split(' ').map(n => n[0]).join('')}
+                      {formData.name.split(' ').map(n => n[0]).join('')}
                     </AvatarFallback>
                   )}
                 </Avatar>
@@ -90,9 +181,9 @@ export default function ProfileSettings({ role }: ProfileSettingsProps) {
                 </label>
               </div>
               <div className="space-y-1 text-center sm:text-left">
-                <p className="text-lg font-medium">{profile.name}</p>
-                <p className="text-sm text-muted-foreground">{profile.email}</p>
-                <p className="text-xs text-muted-foreground">{role.charAt(0).toUpperCase() + role.slice(1)} • {profile.id}</p>
+                <p className="text-lg font-medium">{formData.name || 'User'}</p>
+                <p className="text-sm text-muted-foreground">{formData.email}</p>
+                <p className="text-xs text-muted-foreground">{role.charAt(0).toUpperCase() + role.slice(1)} • {formData.id || 'No ID set'}</p>
               </div>
             </div>
 
@@ -102,7 +193,7 @@ export default function ProfileSettings({ role }: ProfileSettingsProps) {
                 <Input 
                   id="name" 
                   name="name" 
-                  value={profile.name} 
+                  value={formData.name} 
                   onChange={handleChange} 
                 />
               </div>
@@ -111,7 +202,7 @@ export default function ProfileSettings({ role }: ProfileSettingsProps) {
                 <Input 
                   id="email" 
                   name="email" 
-                  value={profile.email} 
+                  value={formData.email} 
                   disabled 
                   className="bg-muted"
                 />
@@ -122,7 +213,7 @@ export default function ProfileSettings({ role }: ProfileSettingsProps) {
                 <Input 
                   id="phone" 
                   name="phone" 
-                  value={profile.phone} 
+                  value={formData.phone} 
                   onChange={handleChange} 
                 />
               </div>
@@ -131,19 +222,21 @@ export default function ProfileSettings({ role }: ProfileSettingsProps) {
                 <Input 
                   id="id" 
                   name="id" 
-                  value={profile.id} 
+                  value={formData.id} 
                   onChange={handleChange} 
-                  disabled={role === 'student'} 
-                  className={role === 'student' ? "bg-muted" : ""}
+                  disabled={role === 'student' && !!formData.id} 
+                  className={role === 'student' && !!formData.id ? "bg-muted" : ""}
                 />
-                {role === 'student' && (
-                  <p className="text-xs text-muted-foreground">Student ID cannot be changed.</p>
+                {role === 'student' && !!formData.id && (
+                  <p className="text-xs text-muted-foreground">Student ID cannot be changed once set.</p>
                 )}
               </div>
             </div>
           </CardContent>
           <CardFooter>
-            <Button type="submit">Save Changes</Button>
+            <Button type="submit" disabled={loading}>
+              {loading ? 'Saving...' : 'Save Changes'}
+            </Button>
           </CardFooter>
         </Card>
       </form>
