@@ -5,7 +5,8 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import RoleSelection from "./pages/auth/RoleSelection";
-import LoginForm from "./pages/auth/LoginForm";
+import LoginPage from "./pages/auth/LoginPage";
+import SignupPage from "./pages/auth/SignupPage";
 import { AuthProvider } from "./contexts/AuthContext";
 
 // Student Pages
@@ -39,9 +40,8 @@ const App = () => (
             <Route path="/" element={<RoleSelection />} />
             
             {/* Auth Routes */}
-            <Route path="/auth/student/login" element={<LoginForm role="student" />} />
-            <Route path="/auth/staff/login" element={<LoginForm role="staff" />} />
-            <Route path="/auth/admin/login" element={<LoginForm role="admin" />} />
+            <Route path="/auth/login" element={<LoginPage />} />
+            <Route path="/auth/signup" element={<SignupPage />} />
             
             {/* Student Routes */}
             <Route path="/student/dashboard" element={<StudentDashboard />} />

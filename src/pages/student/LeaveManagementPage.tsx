@@ -9,7 +9,7 @@ import { LeaveRequest } from "@/components/leave/LeaveRequestCard";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
 
-// Shared global store for real-time leave requests (simulating backend)
+// Initialize global store if not exists
 if (!window.globalLeaveRequests) {
   window.globalLeaveRequests = [];
 }

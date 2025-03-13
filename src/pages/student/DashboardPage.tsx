@@ -1,51 +1,57 @@
 
+import { useEffect, useState } from "react";
 import { Bell, BookOpen, Calendar, FileClock, Home } from "lucide-react";
 import DashboardLayout from "@/layouts/DashboardLayout";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Link } from "react-router-dom";
+import { useAuth } from "@/contexts/AuthContext";
+import { LeaveRequest } from "@/components/leave/LeaveRequestCard";
+import { Announcement } from "@/components/announcements/AnnouncementCard";
+import { supabase } from "@/integrations/supabase/client";
 
 export default function StudentDashboard() {
-  // Mock data for quick statistics
-  const stats = [
-    { title: "Pending Requests", value: "1", status: "pending", icon: <FileClock className="h-4 w-4" /> },
-    { title: "Approved Requests", value: "2", status: "approved", icon: <BookOpen className="h-4 w-4" /> },
-    { title: "Recent Announcements", value: "3", icon: <Bell className="h-4 w-4" /> },
-    { title: "Events This Week", value: "1", icon: <Calendar className="h-4 w-4" /> },
-  ];
+  const { profile } = useAuth();
+  const [stats, setStats] = useState([
+    { title: "Pending Requests", value: "0", status: "pending", icon: <FileClock className="h-4 w-4" /> },
+    { title: "Approved Requests", value: "0", status: "approved", icon: <BookOpen className="h-4 w-4" /> },
+    { title: "Recent Announcements", value: "0", icon: <Bell className="h-4 w-4" /> },
+    { title: "Events This Week", value: "0", icon: <Calendar className="h-4 w-4" /> },
+  ]);
+  
+  const [recentAnnouncements, setRecentAnnouncements] = useState<Announcement[]>([]);
+  const [recentRequests, setRecentRequests] = useState<LeaveRequest[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
-  // Mock data for recent activity
-  const recentAnnouncements = [
-    { 
-      id: "1", 
-      title: "End Semester Examination Schedule", 
-      date: "2 days ago",
-      category: "important" 
-    },
-    { 
-      id: "2", 
-      title: "Campus Placement Drive", 
-      date: "1 week ago",
-      category: "placement" 
-    },
-  ];
-
-  const recentRequests = [
-    {
-      id: "1",
-      type: "od",
-      reason: "Hackathon participation",
-      status: "pending",
-      date: "2023-11-15"
-    },
-    {
-      id: "2",
-      type: "leave",
-      reason: "Family function",
-      status: "approved",
-      date: "2023-11-10"
-    },
-  ];
+  // Fetch real-time data
+  useEffect(() => {
+    setIsLoading(true);
+    
+    // Load leave requests from window.globalLeaveRequests (our mock global store)
+    if (profile && window.globalLeaveRequests) {
+      const studentRequests = window.globalLeaveRequests.filter(
+        req => req.studentId === profile.student_id
+      );
+      
+      setRecentRequests(studentRequests.slice(0, 3));
+      
+      // Update stats based on real data
+      const pendingCount = studentRequests.filter(req => req.status === "pending").length;
+      const approvedCount = studentRequests.filter(req => req.status === "approved").length;
+      
+      setStats(prev => [
+        { ...prev[0], value: pendingCount.toString() },
+        { ...prev[1], value: approvedCount.toString() },
+        { ...prev[2], value: "0" }, // Will be updated when we fetch announcements
+        { ...prev[3], value: "0" }
+      ]);
+    }
+    
+    // Simulating announcements fetch (would be from Supabase in real app)
+    setTimeout(() => {
+      setIsLoading(false);
+    }, 800);
+  }, [profile]);
 
   return (
     <DashboardLayout role="student">
@@ -81,7 +87,7 @@ export default function StudentDashboard() {
                 </div>
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">{stat.value}</div>
+                <div className="text-2xl font-bold">{isLoading ? '...' : stat.value}</div>
               </CardContent>
             </Card>
           ))}
@@ -97,29 +103,38 @@ export default function StudentDashboard() {
                 Latest announcements from your institution
               </CardDescription>
             </CardHeader>
-            <CardContent className="space-y-2">
-              {recentAnnouncements.map((announcement) => (
-                <div 
-                  key={announcement.id}
-                  className="flex items-center justify-between p-2 hover:bg-accent rounded-md"
-                >
-                  <div className="space-y-1">
-                    <p className="text-sm font-medium leading-none">
-                      {announcement.title}
-                    </p>
-                    <p className="text-xs text-muted-foreground">
-                      {announcement.date}
-                    </p>
-                  </div>
-                  <div className={`px-2 py-1 text-xs rounded ${
-                    announcement.category === 'important' 
-                      ? 'bg-yellow-100 text-yellow-800' 
-                      : 'bg-blue-100 text-blue-800'
-                  }`}>
-                    {announcement.category}
-                  </div>
+            <CardContent className="min-h-[200px]">
+              {isLoading ? (
+                <div className="flex items-center justify-center h-full">
+                  <div className="animate-spin h-6 w-6 border-2 border-primary border-t-transparent rounded-full"></div>
                 </div>
-              ))}
+              ) : recentAnnouncements.length > 0 ? (
+                <div className="space-y-2">
+                  {recentAnnouncements.map((announcement) => (
+                    <div 
+                      key={announcement.id}
+                      className="flex items-center justify-between p-2 hover:bg-accent rounded-md"
+                    >
+                      <div className="space-y-1">
+                        <p className="text-sm font-medium leading-none">
+                          {announcement.title}
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          {new Date(announcement.createdAt).toLocaleDateString()}
+                        </p>
+                      </div>
+                      <div className={`px-2 py-1 text-xs rounded bg-blue-100 text-blue-800`}>
+                        {announcement.category}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="flex flex-col items-center justify-center h-full text-center p-4">
+                  <Bell className="h-8 w-8 text-muted-foreground mb-2" />
+                  <p className="text-muted-foreground">No announcements yet</p>
+                </div>
+              )}
             </CardContent>
             <CardFooter>
               <Button variant="ghost" size="sm" asChild className="w-full">
@@ -136,31 +151,45 @@ export default function StudentDashboard() {
                 Your recent leave and OD requests
               </CardDescription>
             </CardHeader>
-            <CardContent className="space-y-2">
-              {recentRequests.map((request) => (
-                <div 
-                  key={request.id}
-                  className="flex items-center justify-between p-2 hover:bg-accent rounded-md"
-                >
-                  <div className="space-y-1">
-                    <p className="text-sm font-medium leading-none">
-                      {request.reason}
-                    </p>
-                    <p className="text-xs text-muted-foreground">
-                      {request.type.toUpperCase()} • {request.date}
-                    </p>
-                  </div>
-                  <div className={`px-2 py-1 text-xs rounded ${
-                    request.status === 'approved' 
-                      ? 'bg-green-100 text-green-800' 
-                      : request.status === 'pending'
-                      ? 'bg-yellow-100 text-yellow-800'
-                      : 'bg-red-100 text-red-800'
-                  }`}>
-                    {request.status}
-                  </div>
+            <CardContent className="min-h-[200px]">
+              {isLoading ? (
+                <div className="flex items-center justify-center h-full">
+                  <div className="animate-spin h-6 w-6 border-2 border-primary border-t-transparent rounded-full"></div>
                 </div>
-              ))}
+              ) : recentRequests.length > 0 ? (
+                <div className="space-y-2">
+                  {recentRequests.map((request) => (
+                    <div 
+                      key={request.id}
+                      className="flex items-center justify-between p-2 hover:bg-accent rounded-md"
+                    >
+                      <div className="space-y-1">
+                        <p className="text-sm font-medium leading-none">
+                          {request.reason}
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          {request.type.toUpperCase()} • {new Date(request.startDate).toLocaleDateString()}
+                          {request.type === 'od' && request.periods ? ` • ${request.periods} periods` : ''}
+                        </p>
+                      </div>
+                      <div className={`px-2 py-1 text-xs rounded ${
+                        request.status === 'approved' 
+                          ? 'bg-green-100 text-green-800' 
+                          : request.status === 'pending'
+                          ? 'bg-yellow-100 text-yellow-800'
+                          : 'bg-red-100 text-red-800'
+                      }`}>
+                        {request.status}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="flex flex-col items-center justify-center h-full text-center p-4">
+                  <FileClock className="h-8 w-8 text-muted-foreground mb-2" />
+                  <p className="text-muted-foreground">No requests submitted yet</p>
+                </div>
+              )}
             </CardContent>
             <CardFooter>
               <Button variant="ghost" size="sm" asChild className="w-full">

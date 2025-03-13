@@ -1,7 +1,7 @@
-
 import { createContext, useContext, useState, useEffect, ReactNode } from "react";
 import { useNavigate } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
 
 // Mock user data for different roles
 const MOCK_USERS = {
@@ -46,6 +46,12 @@ const MOCK_USERS = {
   }
 };
 
+// Valid student IDs
+export const VALID_STUDENT_IDS = [
+  "60821", "60822", "60823", "60824", "60825", 
+  "60826", "60827", "60828", "60829", "60830"
+];
+
 // Types
 type UserRole = "student" | "staff" | "admin";
 type User = { id: string; email: string; };
@@ -65,8 +71,10 @@ interface AuthContextType {
   user: User | null;
   profile: Profile | null;
   loading: boolean;
-  signIn: (email: string, id: string, role: UserRole) => Promise<void>;
+  signIn: (email: string, password: string) => Promise<void>;
+  signUp: (email: string, password: string, role: UserRole, studentId?: string) => Promise<void>;
   signOut: () => Promise<void>;
+  validateStudentId: (studentId: string) => boolean;
 }
 
 // Create context
@@ -84,10 +92,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const checkSession = async () => {
       try {
-        // Check localStorage for a saved role
+        // Check localStorage for a saved session
+        const savedEmail = localStorage.getItem("userEmail");
         const savedRole = localStorage.getItem("userRole") as UserRole | null;
         
-        if (savedRole && MOCK_USERS[savedRole]) {
+        if (savedEmail && savedRole && MOCK_USERS[savedRole]) {
           setUser(MOCK_USERS[savedRole]);
           setProfile(MOCK_USERS[savedRole].profile);
         }
@@ -102,41 +111,97 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   // Sign in function
-  const signIn = async (email: string, id: string, role: UserRole) => {
+  const signIn = async (email: string, password: string) => {
     try {
       setLoading(true);
       
       // Simulate authentication delay
       await new Promise(resolve => setTimeout(resolve, 1000));
       
-      // Set mock user based on role
-      if (MOCK_USERS[role]) {
-        setUser(MOCK_USERS[role]);
-        setProfile(MOCK_USERS[role].profile);
-        
-        // Save role to localStorage
-        localStorage.setItem("userRole", role);
-        
-        // Navigate to the dashboard
-        navigate(`/${role}/dashboard`);
-        
-        toast({
-          title: "Sign in successful",
-          description: `Welcome back, ${MOCK_USERS[role].profile.full_name}!`,
-        });
-      } else {
-        throw new Error("Invalid role");
+      // In a real app, we would call supabase.auth.signInWithPassword here
+      // For now, we'll simulate successful login if the password is not empty
+      if (!email || !password) {
+        throw new Error("Email and password are required");
       }
-    } catch (error) {
+      
+      // Store email for the role selection page
+      localStorage.setItem("userEmail", email);
+      
+      // Navigate to role selection
+      navigate('/');
+      
+      toast({
+        title: "Sign in successful",
+        description: "Please select your role to continue.",
+      });
+    } catch (error: any) {
       console.error("Sign in error:", error);
       toast({
         title: "Sign in failed",
-        description: "Please check your credentials and try again.",
+        description: error.message || "Please check your credentials and try again.",
         variant: "destructive",
       });
     } finally {
       setLoading(false);
     }
+  };
+
+  // Sign up function
+  const signUp = async (email: string, password: string, role: UserRole, studentId?: string) => {
+    try {
+      setLoading(true);
+      
+      // In a real app, we would call supabase.auth.signUp here
+      // For student role, validate student ID
+      if (role === 'student') {
+        if (!studentId || !validateStudentId(studentId)) {
+          throw new Error("Invalid student ID");
+        }
+      }
+      
+      // Simulate signup delay
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      // Create mock user with the selected role
+      if (MOCK_USERS[role]) {
+        const mockUser = MOCK_USERS[role];
+        mockUser.email = email;
+        if (role === 'student' && studentId) {
+          (mockUser.profile as any).student_id = studentId;
+        }
+        
+        setUser(mockUser);
+        setProfile(mockUser.profile);
+        
+        // Save role and email to localStorage
+        localStorage.setItem("userRole", role);
+        localStorage.setItem("userEmail", email);
+        
+        // Navigate to dashboard
+        navigate(`/${role}/dashboard`);
+        
+        toast({
+          title: "Account created",
+          description: `Welcome to UniSync, ${mockUser.profile.full_name}!`,
+        });
+      } else {
+        throw new Error("Invalid role");
+      }
+    } catch (error: any) {
+      console.error("Sign up error:", error);
+      toast({
+        title: "Sign up failed",
+        description: error.message || "An error occurred during sign up.",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Validate student ID
+  const validateStudentId = (studentId: string): boolean => {
+    return VALID_STUDENT_IDS.includes(studentId);
   };
 
   // Sign out function
@@ -149,8 +214,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setProfile(null);
       localStorage.removeItem("userRole");
       
-      // Navigate to root
-      navigate("/");
+      // Keep email for next login
+      // (In a real app, we would call supabase.auth.signOut here)
+      
+      // Navigate to login
+      navigate("/auth/login");
       
       toast({
         title: "Signed out",
@@ -169,7 +237,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, profile, loading, signIn, signOut }}>
+    <AuthContext.Provider value={{ 
+      user, 
+      profile, 
+      loading, 
+      signIn, 
+      signUp, 
+      signOut,
+      validateStudentId 
+    }}>
       {children}
     </AuthContext.Provider>
   );

@@ -24,7 +24,7 @@ const DashboardLayout = ({ children, role }: DashboardLayoutProps) => {
 
   const handleLogout = () => {
     signOut();
-    navigate('/');
+    navigate('/auth/login');
   };
 
   return (
@@ -35,13 +35,21 @@ const DashboardLayout = ({ children, role }: DashboardLayoutProps) => {
             <Link to={`/${role}/dashboard`} className="font-semibold text-lg">
               UniSync
             </Link>
+            
+            {/* Universal Home Button - More prominent */}
+            <Button 
+              variant="default" 
+              size="sm" 
+              className="ml-4" 
+              asChild
+            >
+              <Link to={`/${role}/dashboard`}>
+                <Home className="mr-2 h-4 w-4" />
+                Home
+              </Link>
+            </Button>
+            
             <div className="ml-auto flex items-center space-x-4">
-              <Button variant="ghost" size="icon" asChild>
-                <Link to={`/${role}/dashboard`}>
-                  <Home className="h-5 w-5" />
-                  <span className="sr-only">Home</span>
-                </Link>
-              </Button>
               <Button variant="ghost" size="icon" asChild>
                 <Link to={`/${role}/announcements`}>
                   <Bell className="h-5 w-5" />
