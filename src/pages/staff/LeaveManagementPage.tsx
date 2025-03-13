@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { FileCheck, FileClock } from "lucide-react";
 import { ModuleTabs } from "@/components/ui/module-tabs";
 import DashboardLayout from "@/layouts/DashboardLayout";
@@ -7,60 +7,10 @@ import LeaveRequestsList from "@/components/leave/LeaveRequestsList";
 import { LeaveRequest } from "@/components/leave/LeaveRequestCard";
 import { useToast } from "@/hooks/use-toast";
 
-// Mock data for leave requests
-const mockRequests: LeaveRequest[] = [
-  {
-    id: "1",
-    type: "leave",
-    reason: "Family function",
-    details: "Need to attend a family wedding in my hometown.",
-    startDate: new Date("2023-11-20"),
-    endDate: new Date("2023-11-22"),
-    status: "pending",
-    studentName: "John Doe",
-    studentId: "CS2021001",
-    submittedAt: new Date("2023-11-10"),
-  },
-  {
-    id: "2",
-    type: "od",
-    reason: "Hackathon participation",
-    details: "Selected to represent the college in the national level hackathon at IIT Madras.",
-    startDate: new Date("2023-12-01"),
-    endDate: new Date("2023-12-03"),
-    status: "pending",
-    studentName: "Jane Smith",
-    studentId: "CS2021005",
-    submittedAt: new Date("2023-11-15"),
-  },
-  {
-    id: "3",
-    type: "leave",
-    reason: "Medical leave",
-    details: "Having fever and doctor advised to take rest for 2 days.",
-    startDate: new Date("2023-11-05"),
-    endDate: new Date("2023-11-07"),
-    status: "rejected",
-    studentName: "Robert Johnson",
-    studentId: "CS2021010",
-    submittedAt: new Date("2023-11-04"),
-  },
-  {
-    id: "4",
-    type: "od",
-    reason: "Workshop attendance",
-    details: "Attending a workshop on cloud computing hosted by AWS.",
-    startDate: new Date("2023-10-15"),
-    endDate: new Date("2023-10-15"),
-    status: "acknowledged",
-    studentName: "Emily Brown",
-    studentId: "CS2021015",
-    submittedAt: new Date("2023-10-10"),
-  },
-];
-
 export default function StaffLeaveManagementPage() {
   const [activeTab, setActiveTab] = useState("pending");
+  const [pendingRequests, setPendingRequests] = useState<LeaveRequest[]>([]);
+  const [processedRequests, setProcessedRequests] = useState<LeaveRequest[]>([]);
   const { toast } = useToast();
   
   const tabs = [
@@ -68,15 +18,55 @@ export default function StaffLeaveManagementPage() {
     { id: "processed", label: "Processed Requests", icon: <FileCheck /> },
   ];
   
-  const pendingRequests = mockRequests.filter(
-    r => r.status === "pending"
-  );
-  
-  const processedRequests = mockRequests.filter(
-    r => r.status !== "pending"
-  );
+  // Load requests for staff from global store
+  useEffect(() => {
+    const loadRequests = () => {
+      if (window.globalLeaveRequests) {
+        const pending = window.globalLeaveRequests.filter(
+          r => r.status === "pending"
+        );
+        
+        const processed = window.globalLeaveRequests.filter(
+          r => r.status !== "pending"
+        );
+        
+        setPendingRequests(pending);
+        setProcessedRequests(processed);
+      }
+    };
+    
+    loadRequests();
+    
+    // Real-time updates
+    const interval = setInterval(loadRequests, 2000);
+    
+    return () => clearInterval(interval);
+  }, []);
   
   const handleApprove = (id: string) => {
+    // Find the request
+    const requestIndex = window.globalLeaveRequests.findIndex(r => r.id === id);
+    
+    if (requestIndex !== -1) {
+      // Update the request status
+      window.globalLeaveRequests[requestIndex] = {
+        ...window.globalLeaveRequests[requestIndex],
+        status: window.globalLeaveRequests[requestIndex].type === "leave" ? "approved" : "acknowledged"
+      };
+      
+      // Update local state
+      const updatedPending = window.globalLeaveRequests.filter(
+        r => r.status === "pending"
+      );
+      
+      const updatedProcessed = window.globalLeaveRequests.filter(
+        r => r.status !== "pending"
+      );
+      
+      setPendingRequests(updatedPending);
+      setProcessedRequests(updatedProcessed);
+    }
+    
     toast({
       title: "Request Approved",
       description: "The leave request has been approved successfully.",
@@ -84,6 +74,29 @@ export default function StaffLeaveManagementPage() {
   };
   
   const handleReject = (id: string) => {
+    // Find the request
+    const requestIndex = window.globalLeaveRequests.findIndex(r => r.id === id);
+    
+    if (requestIndex !== -1) {
+      // Update the request status
+      window.globalLeaveRequests[requestIndex] = {
+        ...window.globalLeaveRequests[requestIndex],
+        status: "rejected"
+      };
+      
+      // Update local state
+      const updatedPending = window.globalLeaveRequests.filter(
+        r => r.status === "pending"
+      );
+      
+      const updatedProcessed = window.globalLeaveRequests.filter(
+        r => r.status !== "pending"
+      );
+      
+      setPendingRequests(updatedPending);
+      setProcessedRequests(updatedProcessed);
+    }
+    
     toast({
       title: "Request Rejected",
       description: "The leave request has been rejected.",
@@ -91,6 +104,29 @@ export default function StaffLeaveManagementPage() {
   };
   
   const handleAcknowledge = (id: string) => {
+    // Find the request
+    const requestIndex = window.globalLeaveRequests.findIndex(r => r.id === id);
+    
+    if (requestIndex !== -1) {
+      // Update the request status
+      window.globalLeaveRequests[requestIndex] = {
+        ...window.globalLeaveRequests[requestIndex],
+        status: "acknowledged"
+      };
+      
+      // Update local state
+      const updatedPending = window.globalLeaveRequests.filter(
+        r => r.status === "pending"
+      );
+      
+      const updatedProcessed = window.globalLeaveRequests.filter(
+        r => r.status !== "pending"
+      );
+      
+      setPendingRequests(updatedPending);
+      setProcessedRequests(updatedProcessed);
+    }
+    
     toast({
       title: "Request Acknowledged",
       description: "The OD request has been acknowledged and sent to admin for approval.",

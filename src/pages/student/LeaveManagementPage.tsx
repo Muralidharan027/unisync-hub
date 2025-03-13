@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { FileClock, FileText, PlusCircle } from "lucide-react";
 import { ModuleTabs } from "@/components/ui/module-tabs";
 import DashboardLayout from "@/layouts/DashboardLayout";
@@ -7,63 +7,44 @@ import LeaveRequestForm, { LeaveRequestData } from "@/components/leave/LeaveRequ
 import LeaveRequestsList from "@/components/leave/LeaveRequestsList";
 import { LeaveRequest } from "@/components/leave/LeaveRequestCard";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/contexts/AuthContext";
 
-// Mock data for leave requests
-const mockRequests: LeaveRequest[] = [
-  {
-    id: "1",
-    type: "leave",
-    reason: "Family function",
-    details: "Need to attend a family wedding in my hometown.",
-    startDate: new Date("2023-11-20"),
-    endDate: new Date("2023-11-22"),
-    status: "approved",
-    studentName: "John Doe",
-    studentId: "CS2021001",
-    submittedAt: new Date("2023-11-10"),
-  },
-  {
-    id: "2",
-    type: "od",
-    reason: "Hackathon participation",
-    details: "Selected to represent the college in the national level hackathon at IIT Madras.",
-    startDate: new Date("2023-12-01"),
-    endDate: new Date("2023-12-03"),
-    status: "pending",
-    studentName: "John Doe",
-    studentId: "CS2021001",
-    submittedAt: new Date("2023-11-15"),
-  },
-  {
-    id: "3",
-    type: "leave",
-    reason: "Medical leave",
-    details: "Having fever and doctor advised to take rest for 2 days.",
-    startDate: new Date("2023-11-05"),
-    endDate: new Date("2023-11-07"),
-    status: "rejected",
-    studentName: "John Doe",
-    studentId: "CS2021001",
-    submittedAt: new Date("2023-11-04"),
-  },
-  {
-    id: "4",
-    type: "od",
-    reason: "Workshop attendance",
-    details: "Attending a workshop on cloud computing hosted by AWS.",
-    startDate: new Date("2023-10-15"),
-    endDate: new Date("2023-10-15"),
-    status: "acknowledged",
-    studentName: "John Doe",
-    studentId: "CS2021001",
-    submittedAt: new Date("2023-10-10"),
-  },
-];
+// Shared global store for real-time leave requests (simulating backend)
+if (!window.globalLeaveRequests) {
+  window.globalLeaveRequests = [
+    {
+      id: "1",
+      type: "leave",
+      reason: "Family function",
+      details: "Need to attend a family wedding in my hometown.",
+      startDate: new Date("2023-11-20"),
+      endDate: new Date("2023-11-22"),
+      status: "approved",
+      studentName: "Student User",
+      studentId: "STU001",
+      submittedAt: new Date("2023-11-10"),
+    },
+    {
+      id: "2",
+      type: "od",
+      reason: "Hackathon participation",
+      details: "Selected to represent the college in the national level hackathon at IIT Madras.",
+      startDate: new Date("2023-12-01"),
+      endDate: new Date("2023-12-03"),
+      status: "pending",
+      studentName: "Student User",
+      studentId: "STU001",
+      submittedAt: new Date("2023-11-15"),
+    }
+  ];
+}
 
 export default function StudentLeaveManagementPage() {
   const [activeTab, setActiveTab] = useState("history");
   const [submitting, setSubmitting] = useState(false);
+  const [requests, setRequests] = useState<LeaveRequest[]>([]);
   const { toast } = useToast();
+  const { profile } = useAuth();
   
   const tabs = [
     { id: "history", label: "Request History", icon: <FileClock /> },
@@ -71,11 +52,57 @@ export default function StudentLeaveManagementPage() {
     { id: "drafts", label: "Drafts", icon: <FileText /> },
   ];
   
+  // Load leave requests that belong to the current student
+  useEffect(() => {
+    if (profile) {
+      const studentRequests = window.globalLeaveRequests.filter(
+        req => req.studentId === profile.student_id
+      );
+      setRequests(studentRequests);
+    }
+  }, [profile]);
+  
+  // Subscribe to changes in the global leave requests
+  useEffect(() => {
+    const checkForUpdates = () => {
+      if (profile) {
+        const studentRequests = window.globalLeaveRequests.filter(
+          req => req.studentId === profile.student_id
+        );
+        setRequests(studentRequests);
+      }
+    };
+    
+    // Check for updates every 2 seconds
+    const interval = setInterval(checkForUpdates, 2000);
+    
+    return () => clearInterval(interval);
+  }, [profile]);
+  
   const handleSubmitLeaveRequest = (data: LeaveRequestData) => {
     setSubmitting(true);
     
     // Simulate API call
     setTimeout(() => {
+      const newRequest: LeaveRequest = {
+        id: `request-${Date.now()}`,
+        type: data.type,
+        reason: data.reason,
+        details: data.details,
+        startDate: data.startDate,
+        endDate: data.endDate,
+        status: "pending",
+        studentName: profile?.full_name || "Unknown Student",
+        studentId: profile?.student_id || "Unknown ID",
+        submittedAt: new Date(),
+      };
+      
+      // Add to global store
+      window.globalLeaveRequests.push(newRequest);
+      
+      // Update local state
+      setRequests(prev => [...prev, newRequest]);
+      
       setSubmitting(false);
       toast({
         title: "Request Submitted",
@@ -125,7 +152,7 @@ export default function StudentLeaveManagementPage() {
           />
         ) : activeTab === "history" ? (
           <LeaveRequestsList 
-            requests={mockRequests} 
+            requests={requests} 
             role="student"
             onDownload={handleDownload}
           />
@@ -137,4 +164,11 @@ export default function StudentLeaveManagementPage() {
       </div>
     </DashboardLayout>
   );
+}
+
+// Add global type for TypeScript
+declare global {
+  interface Window {
+    globalLeaveRequests: LeaveRequest[];
+  }
 }

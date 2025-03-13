@@ -22,22 +22,32 @@ type LoginFormProps = {
 export default function LoginForm({ role }: LoginFormProps) {
   const [email, setEmail] = useState('');
   const [id, setId] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const { toast } = useToast();
   const { signIn, loading } = useAuth();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setIsSubmitting(true);
     
+    // Mock credentials validation
     if (!email || !id) {
       toast({
         title: "Missing information",
         description: "Please fill in all fields",
         variant: "destructive",
       });
+      setIsSubmitting(false);
       return;
     }
-    
-    await signIn(email, id, role);
+
+    try {
+      await signIn(email, id, role);
+    } catch (error) {
+      console.error("Login error:", error);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const getIdLabel = () => {
@@ -55,7 +65,7 @@ export default function LoginForm({ role }: LoginFormProps) {
     <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900 p-4">
       <Card className="w-full max-w-md">
         <CardHeader className="space-y-1">
-          <CardTitle className="text-2xl font-bold">Welcome back</CardTitle>
+          <CardTitle className="text-2xl font-bold">Welcome to UniSync</CardTitle>
           <CardDescription>
             Enter your credentials to login as {role}
           </CardDescription>
@@ -67,7 +77,7 @@ export default function LoginForm({ role }: LoginFormProps) {
               <Input
                 id="email"
                 type="email"
-                placeholder="john@example.com"
+                placeholder={`${role}@example.com`}
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
@@ -86,8 +96,8 @@ export default function LoginForm({ role }: LoginFormProps) {
             </div>
           </CardContent>
           <CardFooter>
-            <Button type="submit" className="w-full" disabled={loading}>
-              {loading ? (
+            <Button type="submit" className="w-full" disabled={isSubmitting || loading}>
+              {(isSubmitting || loading) ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                   Signing in...

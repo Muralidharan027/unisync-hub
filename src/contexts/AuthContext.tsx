@@ -1,162 +1,159 @@
 
-import { createContext, useContext, useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { Session, User } from '@supabase/supabase-js';
-import { supabase } from '@/integrations/supabase/client';
-import { useToast } from '@/hooks/use-toast';
+import { createContext, useContext, useState, useEffect, ReactNode } from "react";
+import { useNavigate } from "react-router-dom";
+import { useToast } from "@/hooks/use-toast";
 
+// Mock user data for different roles
+const MOCK_USERS = {
+  student: {
+    id: "student-123",
+    email: "student@example.com",
+    profile: {
+      id: "student-123",
+      role: "student",
+      full_name: "Student User",
+      email: "student@example.com",
+      student_id: "STU001",
+    }
+  },
+  staff: {
+    id: "staff-123",
+    email: "staff@example.com",
+    profile: {
+      id: "staff-123",
+      role: "staff",
+      full_name: "Staff User",
+      email: "staff@example.com",
+      staff_id: "STA001",
+    }
+  },
+  admin: {
+    id: "admin-123",
+    email: "admin@example.com",
+    profile: {
+      id: "admin-123",
+      role: "admin",
+      full_name: "Admin User",
+      email: "admin@example.com",
+      admin_id: "ADM001",
+    }
+  }
+};
+
+// Types
+type UserRole = "student" | "staff" | "admin";
+type User = { id: string; email: string; };
 type Profile = {
   id: string;
-  full_name: string | null;
-  avatar_url: string | null;
-  role: 'student' | 'staff' | 'admin';
+  role: UserRole;
+  full_name: string;
   email: string;
-  student_id: string | null;
-  staff_id: string | null;
-  admin_id: string | null;
-  phone: string | null;
+  student_id?: string;
+  staff_id?: string;
+  admin_id?: string;
 };
 
-type AuthContextType = {
-  session: Session | null;
+interface AuthContextType {
   user: User | null;
   profile: Profile | null;
-  signIn: (email: string, id: string, role: 'student' | 'staff' | 'admin') => Promise<void>;
-  signOut: () => Promise<void>;
   loading: boolean;
-};
+  signIn: (email: string, id: string, role: UserRole) => Promise<void>;
+  signOut: () => Promise<void>;
+}
 
+// Create context
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [session, setSession] = useState<Session | null>(null);
+// Provider component
+export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
   const { toast } = useToast();
 
+  // Check for existing session on mount
   useEffect(() => {
-    // Get initial session
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      setUser(session?.user || null);
-      if (session?.user) {
-        fetchProfile(session.user.id);
-      } else {
+    const checkSession = async () => {
+      try {
+        // Check localStorage for a saved role
+        const savedRole = localStorage.getItem("userRole") as UserRole | null;
+        
+        if (savedRole && MOCK_USERS[savedRole]) {
+          setUser(MOCK_USERS[savedRole]);
+          setProfile(MOCK_USERS[savedRole].profile);
+        }
+      } catch (error) {
+        console.error("Session check error:", error);
+      } finally {
         setLoading(false);
       }
-    });
-
-    // Listen for auth changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
-        setSession(session);
-        setUser(session?.user || null);
-        
-        if (session?.user) {
-          await fetchProfile(session.user.id);
-        } else {
-          setProfile(null);
-          setLoading(false);
-        }
-      }
-    );
-
-    return () => {
-      subscription.unsubscribe();
     };
+
+    checkSession();
   }, []);
 
-  async function fetchProfile(userId: string) {
-    try {
-      setLoading(true);
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', userId)
-        .single();
-
-      if (error) {
-        throw error;
-      }
-
-      setProfile(data as Profile);
-    } catch (error) {
-      console.error('Error fetching profile:', error);
-      toast({
-        title: 'Error fetching profile',
-        description: 'Please try signing in again',
-        variant: 'destructive',
-      });
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  const signIn = async (email: string, id: string, role: 'student' | 'staff' | 'admin') => {
+  // Sign in function
+  const signIn = async (email: string, id: string, role: UserRole) => {
     try {
       setLoading(true);
       
-      // In a real app, we would validate the ID against the user's records
-      // For now, we'll simply authenticate with magic link or password
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email,
-        password: id, // Using ID as password for simplicity (not recommended for production)
-      });
-
-      if (error) {
-        // If signin fails, try to create an account
-        const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
-          email,
-          password: id,
-          options: {
-            data: {
-              role,
-              full_name: email.split('@')[0], // Simple placeholder name
-            },
-          },
-        });
-
-        if (signUpError) {
-          throw signUpError;
-        }
-
+      // Simulate authentication delay
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      // Set mock user based on role
+      if (MOCK_USERS[role]) {
+        setUser(MOCK_USERS[role]);
+        setProfile(MOCK_USERS[role].profile);
+        
+        // Save role to localStorage
+        localStorage.setItem("userRole", role);
+        
+        // Navigate to the dashboard
+        navigate(`/${role}/dashboard`);
+        
         toast({
-          title: 'Account created',
-          description: 'Your account has been created successfully',
+          title: "Sign in successful",
+          description: `Welcome back, ${MOCK_USERS[role].profile.full_name}!`,
         });
+      } else {
+        throw new Error("Invalid role");
       }
-
-      // Redirect to appropriate dashboard
-      navigate(`/${role}/dashboard`);
-    } catch (error: any) {
-      console.error('Error signing in:', error);
+    } catch (error) {
+      console.error("Sign in error:", error);
       toast({
-        title: 'Error signing in',
-        description: error.message || 'Please check your credentials and try again',
-        variant: 'destructive',
+        title: "Sign in failed",
+        description: "Please check your credentials and try again.",
+        variant: "destructive",
       });
     } finally {
       setLoading(false);
     }
   };
 
+  // Sign out function
   const signOut = async () => {
     try {
       setLoading(true);
-      await supabase.auth.signOut();
-      navigate('/');
+      
+      // Clear state and localStorage
+      setUser(null);
+      setProfile(null);
+      localStorage.removeItem("userRole");
+      
+      // Navigate to root
+      navigate("/");
+      
       toast({
-        title: 'Signed out',
-        description: 'You have been signed out successfully',
+        title: "Signed out",
+        description: "You have been signed out successfully."
       });
-    } catch (error: any) {
-      console.error('Error signing out:', error);
+    } catch (error) {
+      console.error("Sign out error:", error);
       toast({
-        title: 'Error signing out',
-        description: error.message || 'An error occurred during sign out',
-        variant: 'destructive',
+        title: "Sign out failed",
+        description: "An error occurred while signing out.",
+        variant: "destructive",
       });
     } finally {
       setLoading(false);
@@ -164,16 +161,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ session, user, profile, signIn, signOut, loading }}>
+    <AuthContext.Provider value={{ user, profile, loading, signIn, signOut }}>
       {children}
     </AuthContext.Provider>
   );
 }
 
+// Hook to use the auth context
 export function useAuth() {
   const context = useContext(AuthContext);
   if (context === undefined) {
-    throw new Error('useAuth must be used within an AuthProvider');
+    throw new Error("useAuth must be used within an AuthProvider");
   }
   return context;
 }
