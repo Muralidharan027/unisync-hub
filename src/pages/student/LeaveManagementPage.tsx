@@ -8,11 +8,7 @@ import LeaveRequestsList from "@/components/leave/LeaveRequestsList";
 import { LeaveRequest } from "@/components/leave/LeaveRequestCard";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
-
-// Initialize global store if not exists, using the already declared interface from announcements.ts
-if (!window.globalLeaveRequests) {
-  window.globalLeaveRequests = [];
-}
+import { addLeaveRequest, getLeaveRequests } from "@/store/leaveRequests";
 
 export default function StudentLeaveManagementPage() {
   const [activeTab, setActiveTab] = useState("history");
@@ -30,7 +26,7 @@ export default function StudentLeaveManagementPage() {
   // Load leave requests that belong to the current student
   useEffect(() => {
     if (profile) {
-      const studentRequests = window.globalLeaveRequests.filter(
+      const studentRequests = getLeaveRequests().filter(
         req => req.studentId === profile.student_id
       );
       setRequests(studentRequests);
@@ -41,7 +37,7 @@ export default function StudentLeaveManagementPage() {
   useEffect(() => {
     const checkForUpdates = () => {
       if (profile) {
-        const studentRequests = window.globalLeaveRequests.filter(
+        const studentRequests = getLeaveRequests().filter(
           req => req.studentId === profile.student_id
         );
         setRequests(studentRequests);
@@ -74,7 +70,7 @@ export default function StudentLeaveManagementPage() {
       };
       
       // Add to global store
-      window.globalLeaveRequests.push(newRequest);
+      addLeaveRequest(newRequest);
       
       // Update local state
       setRequests(prev => [...prev, newRequest]);
@@ -116,6 +112,7 @@ export default function StudentLeaveManagementPage() {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZhaHFsZXJ5d3lidHRqaW5iYW5wIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDE4NTczODEsImV4cCI6MjA1NzQzMzM4MX0.4tkhXB8BYlkAQlmkYYvfuK8gPjoGQztY2xhGbko3fcU'
         },
         body: JSON.stringify({ requestData }),
       });
@@ -154,12 +151,10 @@ export default function StudentLeaveManagementPage() {
   return (
     <DashboardLayout role="student">
       <div className="space-y-6">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight">Leave & OD Management</h1>
-          <p className="text-muted-foreground">
-            Submit and track your leave and on-duty requests.
-          </p>
-        </div>
+        <h1 className="text-2xl font-bold tracking-tight">Leave & OD Management</h1>
+        <p className="text-muted-foreground">
+          Submit and track your leave and on-duty requests.
+        </p>
         
         <ModuleTabs 
           tabs={tabs}

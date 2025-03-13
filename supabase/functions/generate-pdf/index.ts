@@ -15,7 +15,22 @@ serve(async (req) => {
   }
 
   try {
-    const { requestData } = await req.json();
+    // Extract request data - supporting both formats for backward compatibility
+    let requestData;
+    const body = await req.json();
+    
+    if (body.requestData) {
+      requestData = body.requestData;
+    } else if (body.requestId) {
+      // Handle the case where only requestId is provided (from LeaveRequestCard)
+      // In a real app, we would fetch the request from the database using the ID
+      return new Response(
+        JSON.stringify({ error: 'Request data is required' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    } else {
+      throw new Error('Invalid request format');
+    }
     
     // Create a new PDF document
     const pdfDoc = await PDFDocument.create();

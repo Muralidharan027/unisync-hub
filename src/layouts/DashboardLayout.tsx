@@ -1,4 +1,3 @@
-
 import { ReactNode } from 'react';
 import { Bell, Home, LogOut, Settings, User } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
@@ -82,7 +81,12 @@ const DashboardLayout = ({ children, role }: DashboardLayoutProps) => {
               </Link>
             </Button>
             
-            <div className="ml-auto flex items-center space-x-4">
+            <div className="flex items-center gap-4">
+              <div className="hidden sm:flex">
+                <span className="px-3 py-1 text-xs font-medium rounded-full bg-primary/10 text-primary uppercase">
+                  {role}
+                </span>
+              </div>
               <Button variant="ghost" size="icon" asChild>
                 <Link to={`/${role}/announcements`}>
                   <Bell className="h-5 w-5" />

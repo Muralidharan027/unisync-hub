@@ -9,6 +9,7 @@ import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { Switch } from '@/components/ui/switch';
 
 type ProfileSettingsProps = {
   role: 'student' | 'staff' | 'admin';
@@ -25,6 +26,10 @@ export default function ProfileSettings({ role }: ProfileSettingsProps) {
     phone: '',
     profilePicture: '',
     id: '',
+  });
+
+  const [persistData, setPersistData] = useState(() => {
+    return localStorage.getItem('persistUserData') === 'true';
   });
 
   useEffect(() => {
@@ -44,6 +49,18 @@ export default function ProfileSettings({ role }: ProfileSettingsProps) {
     setFormData(prev => ({ ...prev, [name]: value }));
   };
 
+  const handlePersistDataToggle = (checked: boolean) => {
+    setPersistData(checked);
+    localStorage.setItem('persistUserData', checked.toString());
+    
+    toast({
+      title: checked ? "Data persistence enabled" : "Data persistence disabled",
+      description: checked 
+        ? "Your data will now be saved between sessions" 
+        : "Your data will no longer be saved between sessions",
+    });
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
@@ -57,6 +74,7 @@ export default function ProfileSettings({ role }: ProfileSettingsProps) {
       // This is just a placeholder for when we have real authentication
       console.log('Would update profile with:', {
         full_name: formData.name,
+        email: formData.email,
         phone: formData.phone,
         id_field: formData.id,
       });
@@ -175,10 +193,8 @@ export default function ProfileSettings({ role }: ProfileSettingsProps) {
                   id="email" 
                   name="email" 
                   value={formData.email} 
-                  disabled 
-                  className="bg-muted"
+                  onChange={handleChange} 
                 />
-                <p className="text-xs text-muted-foreground">Your email cannot be changed after registration.</p>
               </div>
               <div className="space-y-2">
                 <Label htmlFor="phone">Phone Number</Label>
@@ -202,6 +218,20 @@ export default function ProfileSettings({ role }: ProfileSettingsProps) {
                 {role === 'student' && !!formData.id && (
                   <p className="text-xs text-muted-foreground">Student ID cannot be changed once set.</p>
                 )}
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <div>
+                  <Label htmlFor="persist-data">Data Persistence</Label>
+                  <p className="text-sm text-muted-foreground">Keep your data synced between sessions</p>
+                </div>
+                <Switch 
+                  id="persist-data" 
+                  checked={persistData} 
+                  onCheckedChange={handlePersistDataToggle}
+                />
               </div>
             </div>
           </CardContent>
