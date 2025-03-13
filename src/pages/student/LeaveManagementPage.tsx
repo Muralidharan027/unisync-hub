@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { FileClock, FileText, PlusCircle } from "lucide-react";
 import { ModuleTabs } from "@/components/ui/module-tabs";
@@ -96,11 +97,58 @@ export default function StudentLeaveManagementPage() {
     });
   };
   
-  const handleDownload = (id: string) => {
+  const handleDownload = async (id: string) => {
     toast({
       title: "Download Started",
       description: "Your approval letter is being downloaded",
     });
+    
+    try {
+      // Find the request data
+      const requestData = requests.find(req => req.id === id);
+      
+      if (!requestData) {
+        throw new Error("Request not found");
+      }
+      
+      // Call the serverless function to generate PDF
+      const response = await fetch('https://fahqlerywybttjinbanp.functions.supabase.co/generate-pdf', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ requestData }),
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to generate PDF');
+      }
+      
+      // Get the PDF as a blob
+      const blob = await response.blob();
+      
+      // Create a download link
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${requestData.type}_request_${id}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      
+      toast({
+        title: "Download Complete",
+        description: "Your approval letter has been downloaded",
+      });
+    } catch (error) {
+      console.error("Error generating PDF:", error);
+      toast({
+        title: "Download Failed",
+        description: "There was an error generating your PDF. Please try again.",
+        variant: "destructive",
+      });
+    }
   };
   
   return (

@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -14,6 +14,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { AnnouncementCategory } from "./AnnouncementCard";
+import { FileIcon, Trash2, Upload } from "lucide-react";
+import { useAuth } from "@/contexts/AuthContext";
 
 const categories: { value: AnnouncementCategory; label: string }[] = [
   { value: 'emergency', label: 'Emergency' },
@@ -24,15 +26,63 @@ const categories: { value: AnnouncementCategory; label: string }[] = [
 ];
 
 interface AnnouncementFormProps {
-  onSubmit: (title: string, content: string, category: AnnouncementCategory) => void;
+  onSubmit: (title: string, content: string, category: AnnouncementCategory, file?: File) => void;
   isSubmitting?: boolean;
+  initialData?: {
+    id: string;
+    title: string;
+    content: string;
+    category: AnnouncementCategory;
+    fileName?: string;
+  };
+  isEditing?: boolean;
 }
 
-const AnnouncementForm = ({ onSubmit, isSubmitting = false }: AnnouncementFormProps) => {
-  const [title, setTitle] = useState('');
-  const [content, setContent] = useState('');
-  const [category, setCategory] = useState<AnnouncementCategory>('general');
+const AnnouncementForm = ({ 
+  onSubmit, 
+  isSubmitting = false, 
+  initialData, 
+  isEditing = false 
+}: AnnouncementFormProps) => {
+  const [title, setTitle] = useState(initialData?.title || '');
+  const [content, setContent] = useState(initialData?.content || '');
+  const [category, setCategory] = useState<AnnouncementCategory>(initialData?.category || 'general');
+  const [file, setFile] = useState<File | null>(null);
+  const [fileName, setFileName] = useState<string | undefined>(initialData?.fileName);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
+  const { profile } = useAuth();
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      const selectedFile = e.target.files[0];
+      
+      // Check file size (10MB limit)
+      if (selectedFile.size > 10 * 1024 * 1024) {
+        toast({
+          title: "File too large",
+          description: "Please select a file smaller than 10MB",
+          variant: "destructive",
+        });
+        // Reset the file input
+        if (fileInputRef.current) {
+          fileInputRef.current.value = '';
+        }
+        return;
+      }
+      
+      setFile(selectedFile);
+      setFileName(selectedFile.name);
+    }
+  };
+
+  const handleRemoveFile = () => {
+    setFile(null);
+    setFileName(undefined);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -55,18 +105,25 @@ const AnnouncementForm = ({ onSubmit, isSubmitting = false }: AnnouncementFormPr
       return;
     }
 
-    onSubmit(title, content, category);
+    onSubmit(title, content, category, file || undefined);
     
-    // Clear form after submission
-    setTitle('');
-    setContent('');
-    setCategory('general');
+    if (!isEditing) {
+      // Clear form after submission (only for new announcements)
+      setTitle('');
+      setContent('');
+      setCategory('general');
+      setFile(null);
+      setFileName(undefined);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+    }
   };
 
   return (
     <Card className="w-full">
       <CardHeader>
-        <CardTitle>Create Announcement</CardTitle>
+        <CardTitle>{isEditing ? "Edit Announcement" : "Create Announcement"}</CardTitle>
       </CardHeader>
       <form onSubmit={handleSubmit}>
         <CardContent className="space-y-4">
@@ -111,11 +168,49 @@ const AnnouncementForm = ({ onSubmit, isSubmitting = false }: AnnouncementFormPr
               required
             />
           </div>
+          
+          <div className="space-y-2">
+            <Label htmlFor="attachment">Attachment (Optional, Max 10MB)</Label>
+            <div className="flex flex-col gap-2">
+              <Input
+                ref={fileInputRef}
+                id="attachment"
+                type="file"
+                onChange={handleFileChange}
+                className="hidden"
+              />
+              
+              {fileName ? (
+                <div className="flex items-center p-2 border rounded gap-2">
+                  <FileIcon className="h-5 w-5 text-blue-500" />
+                  <span className="text-sm flex-grow truncate">{fileName}</span>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={handleRemoveFile}
+                  >
+                    <Trash2 className="h-4 w-4 text-red-500" />
+                  </Button>
+                </div>
+              ) : (
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => fileInputRef.current?.click()}
+                  className="w-full"
+                >
+                  <Upload className="mr-2 h-4 w-4" />
+                  Choose File
+                </Button>
+              )}
+            </div>
+          </div>
         </CardContent>
         
         <CardFooter>
           <Button type="submit" disabled={isSubmitting} className="w-full">
-            {isSubmitting ? "Posting..." : "Post Announcement"}
+            {isSubmitting ? "Posting..." : isEditing ? "Update Announcement" : "Post Announcement"}
           </Button>
         </CardFooter>
       </form>

@@ -1,6 +1,5 @@
 
 import { serve } from "https://deno.land/std@0.131.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.21.0";
 import { PDFDocument, StandardFonts, rgb } from "https://esm.sh/pdf-lib@1.17.1";
 
 const corsHeaders = {
@@ -16,56 +15,8 @@ serve(async (req) => {
   }
 
   try {
-    const { requestId } = await req.json();
+    const { requestData } = await req.json();
     
-    // Create Supabase client with Auth context of the user that called the function
-    const supabaseClient = createClient(
-      Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_ANON_KEY') ?? '',
-      {
-        global: {
-          headers: { Authorization: req.headers.get('Authorization')! },
-        },
-      }
-    );
-
-    // Fetch the leave request details
-    const { data: request, error } = await supabaseClient
-      .from('leave_requests')
-      .select(`
-        id, 
-        type, 
-        reason, 
-        details, 
-        start_date, 
-        end_date, 
-        status, 
-        periods,
-        user_id
-      `)
-      .eq('id', requestId)
-      .single();
-
-    if (error || !request) {
-      console.error('Error fetching request:', error);
-      return new Response(
-        JSON.stringify({ error: 'Failed to fetch request details' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
-    // Get user profile details
-    const { data: profile } = await supabaseClient
-      .from('profiles')
-      .select('full_name, student_id, department, email')
-      .eq('id', request.user_id)
-      .single();
-
-    const userName = profile?.full_name || 'Unknown User';
-    const userId = profile?.student_id || 'Unknown ID';
-    const department = profile?.department || 'Unknown Department';
-    const email = profile?.email || 'Unknown Email';
-
     // Create a new PDF document
     const pdfDoc = await PDFDocument.create();
     const page = pdfDoc.addPage([595.28, 841.89]); // A4 size
@@ -81,7 +32,7 @@ serve(async (req) => {
     };
     
     // Title
-    drawText(`${request.type.toUpperCase()} REQUEST LETTER`, 180, height - 50, { 
+    drawText(`${requestData.type.toUpperCase()} REQUEST LETTER`, 180, height - 50, { 
       fontSize: 18, 
       font: boldFont 
     });
@@ -92,33 +43,33 @@ serve(async (req) => {
     
     // Personal Details
     drawText('PERSONAL DETAILS', 50, height - 120, { fontSize: 14, font: boldFont });
-    drawText(`Name: ${userName}`, 50, height - 150);
-    drawText(`Student/Staff ID: ${userId}`, 50, height - 170);
-    drawText(`Department: ${department}`, 50, height - 190);
-    drawText(`Contact: ${email}`, 50, height - 210);
+    drawText(`Name: ${requestData.studentName}`, 50, height - 150);
+    drawText(`Student/Staff ID: ${requestData.studentId}`, 50, height - 170);
+    drawText(`Department: Computer Science`, 50, height - 190);  // Placeholder
+    drawText(`Contact: student@example.com`, 50, height - 210);  // Placeholder
     
     // Request Details
     drawText('REQUEST DETAILS', 50, height - 250, { fontSize: 14, font: boldFont });
-    drawText(`Request Type: ${request.type.charAt(0).toUpperCase() + request.type.slice(1)}`, 50, height - 280);
-    drawText(`From: ${new Date(request.start_date).toLocaleDateString()}`, 50, height - 300);
-    drawText(`To: ${new Date(request.end_date).toLocaleDateString()}`, 50, height - 320);
+    drawText(`Request Type: ${requestData.type.charAt(0).toUpperCase() + requestData.type.slice(1)}`, 50, height - 280);
+    drawText(`From: ${new Date(requestData.startDate).toLocaleDateString()}`, 50, height - 300);
+    drawText(`To: ${new Date(requestData.endDate).toLocaleDateString()}`, 50, height - 320);
     
-    if (request.type === 'od' && request.periods) {
-      drawText(`Number of Periods: ${request.periods}`, 50, height - 340);
-      drawText(`Reason: ${request.reason}`, 50, height - 360);
-      if (request.details) {
-        drawText(`Additional Information: ${request.details}`, 50, height - 380);
+    if (requestData.type === 'od' && requestData.periods) {
+      drawText(`Number of Periods: ${requestData.periods}`, 50, height - 340);
+      drawText(`Reason: ${requestData.reason}`, 50, height - 360);
+      if (requestData.details) {
+        drawText(`Additional Information: ${requestData.details}`, 50, height - 380);
       }
     } else {
-      drawText(`Reason: ${request.reason}`, 50, height - 340);
-      if (request.details) {
-        drawText(`Additional Information: ${request.details}`, 50, height - 360);
+      drawText(`Reason: ${requestData.reason}`, 50, height - 340);
+      if (requestData.details) {
+        drawText(`Additional Information: ${requestData.details}`, 50, height - 360);
       }
     }
     
     // Approval Details
     drawText('APPROVAL DETAILS', 50, height - 420, { fontSize: 14, font: boldFont });
-    drawText(`Status: ${request.status.toUpperCase()}`, 50, height - 450);
+    drawText(`Status: ${requestData.status.toUpperCase()}`, 50, height - 450);
     
     // Footer
     drawText(`This document was automatically generated by UniSync on ${currentDate}`, 120, 50);
@@ -129,7 +80,7 @@ serve(async (req) => {
     return new Response(pdfBytes, { 
       headers: {
         ...corsHeaders,
-        'Content-Disposition': `attachment; filename="${request.type}_request_${requestId}.pdf"`,
+        'Content-Disposition': `attachment; filename="${requestData.type}_request_${requestData.id}.pdf"`,
       }
     });
     

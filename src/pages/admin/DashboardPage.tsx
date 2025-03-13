@@ -8,12 +8,12 @@ import { Badge } from "@/components/ui/badge";
 import { useEffect, useState } from "react";
 import { format } from "date-fns";
 import { LeaveRequest } from "@/components/leave/LeaveRequestCard";
+import { getAnnouncements } from "@/store/announcements";
 
 // Update Window interface to use LeaveRequest[] type
 declare global {
   interface Window {
     globalLeaveRequests: LeaveRequest[];
-    globalAnnouncements?: any[];
   }
 }
 
@@ -22,31 +22,77 @@ export default function AdminDashboard() {
     { title: "Total Students", value: "0", icon: <Users className="h-4 w-4" /> },
     { title: "Total Staff", value: "0", icon: <Users className="h-4 w-4" /> },
     { title: "Pending Requests", value: "0", icon: <FileClock className="h-4 w-4" /> },
-    { title: "Upcoming Events", value: "0", icon: <Calendar className="h-4 w-4" /> },
+    { title: "Total Announcements", value: "0", icon: <Bell className="h-4 w-4" /> },
   ]);
 
-  const [pendingRequests, setPendingRequests] = useState([]);
-  const [recentAnnouncements, setRecentAnnouncements] = useState([]);
+  const [pendingRequests, setPendingRequests] = useState<LeaveRequest[]>([]);
+  const [recentAnnouncements, setRecentAnnouncements] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    const pendingCount = window.globalLeaveRequests ? 
-      window.globalLeaveRequests.filter(req => req.status === "pending" || req.status === "acknowledged").length : 0;
+    setIsLoading(true);
     
-    setStats(prev => prev.map(stat => 
-      stat.title === "Pending Requests" ? { ...stat, value: pendingCount.toString() } : stat
-    ));
-    
-    if (window.globalLeaveRequests) {
-      const pendingReqs = window.globalLeaveRequests
-        .filter(req => req.status === "pending" || req.status === "acknowledged")
-        .slice(0, 3);
+    // For the purpose of demo, use timeouts to simulate loading
+    setTimeout(() => {
+      // Calculate stats
+      const pendingCount = window.globalLeaveRequests ? 
+        window.globalLeaveRequests.filter(req => req.status === "pending" || req.status === "acknowledged").length : 0;
       
-      setPendingRequests(pendingReqs);
-    }
+      const announcements = getAnnouncements();
+      
+      setStats([
+        { title: "Total Students", value: "45", icon: <Users className="h-4 w-4" /> },
+        { title: "Total Staff", value: "12", icon: <Users className="h-4 w-4" /> },
+        { title: "Pending Requests", value: pendingCount.toString(), icon: <FileClock className="h-4 w-4" /> },
+        { title: "Total Announcements", value: announcements.length.toString(), icon: <Bell className="h-4 w-4" /> },
+      ]);
+      
+      // Get pending requests
+      if (window.globalLeaveRequests) {
+        const pendingReqs = window.globalLeaveRequests
+          .filter(req => req.status === "pending" || req.status === "acknowledged")
+          .slice(0, 3);
+        
+        setPendingRequests(pendingReqs);
+      }
+      
+      // Get recent announcements
+      setRecentAnnouncements(announcements.slice(0, 3));
+      
+      setIsLoading(false);
+    }, 1000);
+  }, []);
+  
+  // Subscribe to updates
+  useEffect(() => {
+    const interval = setInterval(() => {
+      // Update stats for real-time changes
+      const pendingCount = window.globalLeaveRequests ? 
+        window.globalLeaveRequests.filter(req => req.status === "pending" || req.status === "acknowledged").length : 0;
+      
+      const announcements = getAnnouncements();
+      
+      setStats(prev => [
+        prev[0], 
+        prev[1],
+        { ...prev[2], value: pendingCount.toString() },
+        { ...prev[3], value: announcements.length.toString() }
+      ]);
+      
+      // Update pending requests
+      if (window.globalLeaveRequests) {
+        const pendingReqs = window.globalLeaveRequests
+          .filter(req => req.status === "pending" || req.status === "acknowledged")
+          .slice(0, 3);
+        
+        setPendingRequests(pendingReqs);
+      }
+      
+      // Update recent announcements
+      setRecentAnnouncements(announcements.slice(0, 3));
+    }, 5000);
     
-    if (window.globalAnnouncements) {
-      setRecentAnnouncements(window.globalAnnouncements.slice(0, 3));
-    }
+    return () => clearInterval(interval);
   }, []);
 
   return (
@@ -82,7 +128,13 @@ export default function AdminDashboard() {
                 </div>
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">{stat.value}</div>
+                <div className="text-2xl font-bold">
+                  {isLoading ? (
+                    <div className="h-6 w-12 bg-gray-200 animate-pulse rounded"></div>
+                  ) : (
+                    stat.value
+                  )}
+                </div>
               </CardContent>
             </Card>
           ))}
@@ -97,7 +149,13 @@ export default function AdminDashboard() {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              {pendingRequests.length > 0 ? (
+              {isLoading ? (
+                <div className="space-y-4">
+                  {[1, 2, 3].map((i) => (
+                    <div key={i} className="h-16 bg-gray-200 animate-pulse rounded"></div>
+                  ))}
+                </div>
+              ) : pendingRequests.length > 0 ? (
                 <div className="space-y-2">
                   {pendingRequests.map((request) => (
                     <div 
@@ -154,7 +212,13 @@ export default function AdminDashboard() {
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-2">
-              {recentAnnouncements.length > 0 ? (
+              {isLoading ? (
+                <div className="space-y-4">
+                  {[1, 2, 3].map((i) => (
+                    <div key={i} className="h-12 bg-gray-200 animate-pulse rounded"></div>
+                  ))}
+                </div>
+              ) : recentAnnouncements.length > 0 ? (
                 recentAnnouncements.map((announcement) => (
                   <div 
                     key={announcement.id}
@@ -165,18 +229,12 @@ export default function AdminDashboard() {
                         {announcement.title}
                       </p>
                       <p className="text-xs text-muted-foreground">
-                        {announcement.date}
+                        {formatDistanceToNow(announcement.createdAt, { addSuffix: true })}
                       </p>
                     </div>
-                    <div className={`px-2 py-1 text-xs rounded ${
-                      announcement.category === 'important' 
-                        ? 'bg-yellow-100 text-yellow-800' 
-                        : announcement.category === 'emergency'
-                        ? 'bg-red-100 text-red-800'
-                        : 'bg-blue-100 text-blue-800'
-                    }`}>
-                      {announcement.category}
-                    </div>
+                    <Badge className={getCategoryColor(announcement.category)}>
+                      {getCategoryName(announcement.category)}
+                    </Badge>
                   </div>
                 ))
               ) : (
@@ -196,3 +254,29 @@ export default function AdminDashboard() {
     </DashboardLayout>
   );
 }
+
+// Helper functions for announcements
+const getCategoryColor = (category: string) => {
+  switch (category) {
+    case 'emergency':
+      return 'bg-red-500 hover:bg-red-600';
+    case 'important':
+      return 'bg-yellow-500 hover:bg-yellow-600';
+    case 'placement':
+      return 'bg-blue-500 hover:bg-blue-600';
+    case 'event':
+      return 'bg-purple-500 hover:bg-purple-600';
+    case 'general':
+    default:
+      return 'bg-green-500 hover:bg-green-600';
+  }
+};
+
+const getCategoryName = (category: string) => {
+  return category.charAt(0).toUpperCase() + category.slice(1);
+};
+
+// Helper for time formatting
+const formatDistanceToNow = (date: Date, options: any) => {
+  return format(date, 'MMM dd, yyyy');
+};

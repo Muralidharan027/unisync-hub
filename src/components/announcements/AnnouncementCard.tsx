@@ -1,9 +1,21 @@
 
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { BookmarkIcon, Share2Icon } from "lucide-react";
+import { BookmarkIcon, Share2Icon, FileIcon, Pencil, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { formatDistanceToNow } from "date-fns";
+import { 
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
+import { useState } from "react";
 
 export type AnnouncementCategory = 'emergency' | 'important' | 'placement' | 'event' | 'general';
 
@@ -14,6 +26,9 @@ export interface Announcement {
   category: AnnouncementCategory;
   createdAt: Date;
   createdBy: string;
+  fileUrl?: string;
+  fileName?: string;
+  creatorId?: string;
 }
 
 const getCategoryColor = (category: AnnouncementCategory) => {
@@ -40,9 +55,38 @@ interface AnnouncementCardProps {
   announcement: Announcement;
   onSave?: (id: string) => void;
   onShare?: (id: string) => void;
+  onEdit?: (id: string) => void;
+  onDelete?: (id: string) => void;
+  currentUserId?: string;
+  role: 'student' | 'staff' | 'admin';
 }
 
-const AnnouncementCard = ({ announcement, onSave, onShare }: AnnouncementCardProps) => {
+const AnnouncementCard = ({ 
+  announcement, 
+  onSave, 
+  onShare, 
+  onEdit, 
+  onDelete,
+  currentUserId,
+  role 
+}: AnnouncementCardProps) => {
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  
+  const canModify = 
+    role === 'admin' || 
+    (role === 'staff' && announcement.creatorId === currentUserId);
+
+  const handleDownloadFile = () => {
+    if (announcement.fileUrl) {
+      const a = document.createElement('a');
+      a.href = announcement.fileUrl;
+      a.download = announcement.fileName || 'announcement_attachment';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+    }
+  };
+  
   return (
     <Card className="w-full mb-4 shadow-sm hover:shadow-md transition-shadow">
       <CardHeader className="pb-2">
@@ -60,11 +104,26 @@ const AnnouncementCard = ({ announcement, onSave, onShare }: AnnouncementCardPro
       </CardHeader>
       <CardContent className="text-sm">
         <p>{announcement.content}</p>
+        
+        {announcement.fileName && (
+          <div className="mt-4 p-2 border rounded flex items-center gap-2 bg-slate-50">
+            <FileIcon className="h-5 w-5 text-blue-500" />
+            <span className="text-sm flex-grow truncate">{announcement.fileName}</span>
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              onClick={handleDownloadFile}
+              disabled={!announcement.fileUrl}
+            >
+              Download
+            </Button>
+          </div>
+        )}
       </CardContent>
       <CardFooter className="flex justify-between pt-2 text-xs text-muted-foreground">
         <span>By {announcement.createdBy}</span>
         <div className="flex gap-2">
-          {onSave && (
+          {onSave && role === 'student' && (
             <Button 
               variant="ghost" 
               size="sm" 
@@ -74,6 +133,7 @@ const AnnouncementCard = ({ announcement, onSave, onShare }: AnnouncementCardPro
               <BookmarkIcon className="h-4 w-4" />
             </Button>
           )}
+          
           {onShare && (
             <Button 
               variant="ghost" 
@@ -83,6 +143,51 @@ const AnnouncementCard = ({ announcement, onSave, onShare }: AnnouncementCardPro
             >
               <Share2Icon className="h-4 w-4" />
             </Button>
+          )}
+          
+          {onEdit && canModify && (
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              onClick={() => onEdit(announcement.id)}
+              title="Edit announcement"
+            >
+              <Pencil className="h-4 w-4" />
+            </Button>
+          )}
+          
+          {onDelete && canModify && (
+            <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+              <AlertDialogTrigger asChild>
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  title="Delete announcement"
+                >
+                  <Trash2 className="h-4 w-4 text-red-500" />
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    This will permanently delete this announcement. This action cannot be undone.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                  <AlertDialogAction 
+                    onClick={() => {
+                      onDelete(announcement.id);
+                      setIsDeleteDialogOpen(false);
+                    }}
+                    className="bg-red-500 hover:bg-red-600"
+                  >
+                    Delete
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
           )}
         </div>
       </CardFooter>

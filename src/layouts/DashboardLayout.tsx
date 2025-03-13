@@ -12,11 +12,40 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { useAuth } from "@/contexts/AuthContext";
 import ProtectedRoute from "@/components/auth/ProtectedRoute";
+import { Badge } from "@/components/ui/badge";
 
 interface DashboardLayoutProps {
   children: React.ReactNode;
   role: 'student' | 'staff' | 'admin';
 }
+
+// Helper function to get role display text
+const getRoleDisplayText = (role: 'student' | 'staff' | 'admin') => {
+  switch(role) {
+    case 'student':
+      return 'Student';
+    case 'staff':
+      return 'Staff Member';
+    case 'admin':
+      return 'Administrator';
+    default:
+      return 'User';
+  }
+};
+
+// Helper function to get role badge color
+const getRoleBadgeColor = (role: 'student' | 'staff' | 'admin') => {
+  switch(role) {
+    case 'student':
+      return 'bg-blue-500 hover:bg-blue-600';
+    case 'staff':
+      return 'bg-green-500 hover:bg-green-600';
+    case 'admin':
+      return 'bg-purple-500 hover:bg-purple-600';
+    default:
+      return 'bg-gray-500 hover:bg-gray-600';
+  }
+};
 
 const DashboardLayout = ({ children, role }: DashboardLayoutProps) => {
   const navigate = useNavigate();
@@ -35,6 +64,10 @@ const DashboardLayout = ({ children, role }: DashboardLayoutProps) => {
             <Link to={`/${role}/dashboard`} className="font-semibold text-lg">
               UniSync
             </Link>
+            
+            <Badge className={`ml-3 ${getRoleBadgeColor(role)}`}>
+              {getRoleDisplayText(role)}
+            </Badge>
             
             {/* Universal Home Button - More prominent */}
             <Button 
@@ -63,6 +96,13 @@ const DashboardLayout = ({ children, role }: DashboardLayoutProps) => {
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
+                  <div className="px-2 py-1.5 text-sm font-medium">
+                    {profile?.full_name || 'User Profile'}
+                  </div>
+                  <div className="px-2 py-1.5 text-xs text-muted-foreground">
+                    {profile?.email || 'Loading...'}
+                  </div>
+                  <DropdownMenuSeparator />
                   <DropdownMenuItem asChild>
                     <Link to={`/${role}/settings/profile`}>
                       <User className="mr-2 h-4 w-4" />

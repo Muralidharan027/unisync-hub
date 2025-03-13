@@ -7,13 +7,15 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Link } from "react-router-dom";
 import { Badge } from "@/components/ui/badge";
 import { LeaveRequest } from "@/components/leave/LeaveRequestCard";
+import { format } from "date-fns";
+import { getAnnouncements } from "@/store/announcements";
 
 export default function StaffDashboard() {
   const [stats, setStats] = useState([
     { title: "Pending Leave Requests", value: "0", icon: <FileClock className="h-4 w-4" /> },
     { title: "Pending OD Requests", value: "0", icon: <FileText className="h-4 w-4" /> },
     { title: "Total Students", value: "45", icon: <Users className="h-4 w-4" /> }, // Static value
-    { title: "Upcoming Events", value: "0", icon: <Calendar className="h-4 w-4" /> },
+    { title: "Total Announcements", value: "0", icon: <Bell className="h-4 w-4" /> },
   ]);
 
   const [pendingRequests, setPendingRequests] = useState<LeaveRequest[]>([]);
@@ -24,32 +26,34 @@ export default function StaffDashboard() {
     setIsLoading(true);
     
     // In a real app, we would fetch from Supabase
-    // For now, we'll use the global store
-    if (window.globalLeaveRequests) {
-      const pendingReqs = window.globalLeaveRequests.filter(
-        req => req.status === "pending"
-      ).slice(0, 5);
-      
-      setPendingRequests(pendingReqs);
-      
-      // Update stats
-      const pendingLeave = window.globalLeaveRequests.filter(
-        req => req.status === "pending" && req.type === "leave"
-      ).length;
-      
-      const pendingOD = window.globalLeaveRequests.filter(
-        req => req.status === "pending" && req.type === "od"
-      ).length;
-      
-      setStats(prev => [
-        { ...prev[0], value: pendingLeave.toString() },
-        { ...prev[1], value: pendingOD.toString() },
-        { ...prev[2], value: "45" }, // Static value
-        { ...prev[3], value: "2" }   // Static value
-      ]);
-    }
-    
+    // For now, we'll use the global store with a timeout to simulate loading
     setTimeout(() => {
+      if (window.globalLeaveRequests) {
+        const pendingReqs = window.globalLeaveRequests.filter(
+          req => req.status === "pending"
+        ).slice(0, 5);
+        
+        setPendingRequests(pendingReqs);
+        
+        // Update stats
+        const pendingLeave = window.globalLeaveRequests.filter(
+          req => req.status === "pending" && req.type === "leave"
+        ).length;
+        
+        const pendingOD = window.globalLeaveRequests.filter(
+          req => req.status === "pending" && req.type === "od"
+        ).length;
+        
+        const totalAnnouncements = getAnnouncements().length;
+        
+        setStats([
+          { title: "Pending Leave Requests", value: pendingLeave.toString(), icon: <FileClock className="h-4 w-4" /> },
+          { title: "Pending OD Requests", value: pendingOD.toString(), icon: <FileText className="h-4 w-4" /> },
+          { title: "Total Students", value: "45", icon: <Users className="h-4 w-4" /> }, // Static value
+          { title: "Total Announcements", value: totalAnnouncements.toString(), icon: <Bell className="h-4 w-4" /> }
+        ]);
+      }
+      
       setIsLoading(false);
     }, 800);
   }, []);
@@ -63,11 +67,29 @@ export default function StaffDashboard() {
         ).slice(0, 5);
         
         setPendingRequests(pendingReqs);
+        
+        // Update stats
+        const pendingLeave = window.globalLeaveRequests.filter(
+          req => req.status === "pending" && req.type === "leave"
+        ).length;
+        
+        const pendingOD = window.globalLeaveRequests.filter(
+          req => req.status === "pending" && req.type === "od"
+        ).length;
+        
+        const totalAnnouncements = getAnnouncements().length;
+        
+        setStats(prev => [
+          { ...prev[0], value: pendingLeave.toString() },
+          { ...prev[1], value: pendingOD.toString() },
+          { ...prev[2] }, // Static value
+          { ...prev[3], value: totalAnnouncements.toString() }
+        ]);
       }
     };
     
-    // Check for updates every 2 seconds
-    const interval = setInterval(checkForUpdates, 2000);
+    // Check for updates every 5 seconds
+    const interval = setInterval(checkForUpdates, 5000);
     
     return () => clearInterval(interval);
   }, []);
@@ -106,7 +128,13 @@ export default function StaffDashboard() {
                 </div>
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">{isLoading ? '...' : stat.value}</div>
+                <div className="text-2xl font-bold">
+                  {isLoading ? (
+                    <div className="h-6 w-12 bg-gray-200 animate-pulse rounded"></div>
+                  ) : (
+                    stat.value
+                  )}
+                </div>
               </CardContent>
             </Card>
           ))}
@@ -137,7 +165,7 @@ export default function StaffDashboard() {
                         {request.reason}
                       </p>
                       <p className="text-sm text-muted-foreground">
-                        {request.studentName} • {new Date(request.startDate).toLocaleDateString()} to {new Date(request.endDate).toLocaleDateString()}
+                        {request.studentName} • {format(new Date(request.startDate), "MMM dd")} to {format(new Date(request.endDate), "MMM dd")}
                         {request.type === 'od' && request.periods ? ` • ${request.periods} periods` : ''}
                       </p>
                     </div>
