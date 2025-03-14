@@ -1,5 +1,5 @@
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -14,7 +14,8 @@ import { Label } from "@/components/ui/label";
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { Loader2 } from 'lucide-react';
-import { validateStudentId } from '@/utils/validation';
+import { validateStudentId, validateRegisterNumber } from '@/utils/validation';
+import { Link } from 'react-router-dom';
 
 type LoginFormProps = {
   role: 'student' | 'staff' | 'admin';
@@ -28,12 +29,19 @@ export default function LoginForm({ role }: LoginFormProps) {
   const { toast } = useToast();
   const { signIn, loading } = useAuth();
 
+  // For student role, use register number as both ID and password
+  useEffect(() => {
+    if (role === 'student' && id) {
+      setPassword(id);
+    }
+  }, [role, id]);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
     
     // Form validation
-    if (!email || !password || !id) {
+    if (!email || !id) {
       toast({
         title: "Missing information",
         description: "Please fill in all fields",
@@ -43,11 +51,26 @@ export default function LoginForm({ role }: LoginFormProps) {
       return;
     }
 
-    // Student ID validation if role is student
-    if (role === 'student' && !validateStudentId(id)) {
+    // Student-specific validation
+    if (role === 'student') {
+      if (!validateRegisterNumber(id)) {
+        toast({
+          title: "Invalid Register Number",
+          description: "Register Number must be exactly 13 digits",
+          variant: "destructive",
+        });
+        setIsSubmitting(false);
+        return;
+      }
+      
+      // For students, the ID (register number) is also the password
+      if (password !== id) {
+        setPassword(id);
+      }
+    } else if (!password) {
       toast({
-        title: "Invalid Student ID",
-        description: "Please enter a valid student ID",
+        title: "Missing password",
+        description: "Please enter your password",
         variant: "destructive",
       });
       setIsSubmitting(false);
@@ -56,7 +79,8 @@ export default function LoginForm({ role }: LoginFormProps) {
 
     try {
       // Call signIn with role-specific data
-      await signIn(email, password, { role, id });
+      const finalPassword = role === 'student' ? id : password;
+      await signIn(email, finalPassword, { role, id });
     } catch (error: any) {
       console.error("Login error:", error);
       toast({
@@ -72,7 +96,7 @@ export default function LoginForm({ role }: LoginFormProps) {
   const getIdLabel = () => {
     switch (role) {
       case 'student':
-        return 'Student ID';
+        return 'Register Number (13 digits)';
       case 'staff':
         return 'Staff ID';
       case 'admin':
@@ -107,25 +131,30 @@ export default function LoginForm({ role }: LoginFormProps) {
               <Input
                 id="id"
                 type="text"
-                placeholder="Enter your ID"
+                placeholder={role === 'student' ? "Enter your 13-digit Register Number" : "Enter your ID"}
                 value={id}
                 onChange={(e) => setId(e.target.value)}
                 required
               />
+              {role === 'student' && (
+                <p className="text-xs text-gray-500">Your Register Number serves as both your ID and password</p>
+              )}
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="password">Password</Label>
-              <Input
-                id="password"
-                type="password"
-                placeholder="••••••••"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-              />
-            </div>
+            {role !== 'student' && (
+              <div className="space-y-2">
+                <Label htmlFor="password">Password</Label>
+                <Input
+                  id="password"
+                  type="password"
+                  placeholder="••••••••"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  required
+                />
+              </div>
+            )}
           </CardContent>
-          <CardFooter>
+          <CardFooter className="flex flex-col">
             <Button type="submit" className="w-full" disabled={isSubmitting || loading}>
               {(isSubmitting || loading) ? (
                 <>
@@ -136,6 +165,11 @@ export default function LoginForm({ role }: LoginFormProps) {
                 "Login"
               )}
             </Button>
+            <div className="mt-4 text-center text-sm">
+              <Link to="/auth/login" className="text-blue-500 hover:underline">
+                Switch to another role
+              </Link>
+            </div>
           </CardFooter>
         </form>
       </Card>

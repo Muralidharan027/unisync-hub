@@ -150,6 +150,30 @@ export type Database = {
         }
         Relationships: []
       }
+      student_credentials: {
+        Row: {
+          created_at: string
+          email: string
+          id: string
+          register_number: string
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          email: string
+          id?: string
+          register_number: string
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          email?: string
+          id?: string
+          register_number?: string
+          user_id?: string | null
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never

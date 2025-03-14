@@ -11,5 +11,20 @@ export default function RoleLoginPage() {
     return <Navigate to="/auth/login" replace />;
   }
   
-  return <LoginForm role={role} />;
+  // Message for students about register number
+  const studentMessage = role === 'student' 
+    ? "Use your 13-digit College Register Number as your password" 
+    : "";
+  
+  return (
+    <>
+      {role === 'student' && (
+        <div className="text-center mb-4 bg-blue-50 p-3 rounded-md text-blue-800 max-w-md mx-auto">
+          <p className="font-medium">Student Login</p>
+          <p className="text-sm">Please use your 13-digit College Register Number as your password</p>
+        </div>
+      )}
+      <LoginForm role={role} />
+    </>
+  );
 }

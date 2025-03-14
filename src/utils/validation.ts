@@ -29,3 +29,13 @@ export const validatePassword = (password: string): boolean => {
   // Minimum password length of 6 characters
   return password.length >= 6;
 };
+
+/**
+ * Validates a student register number
+ * @param registerNumber The register number to validate
+ * @returns true if the register number is valid (exactly 13 digits), false otherwise
+ */
+export const validateRegisterNumber = (registerNumber: string): boolean => {
+  // Register number must be exactly 13 digits
+  return /^\d{13}$/.test(registerNumber);
+};
