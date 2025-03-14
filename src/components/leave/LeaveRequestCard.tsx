@@ -16,6 +16,7 @@ export interface LeaveRequest {
   status: 'pending' | 'approved' | 'rejected' | 'acknowledged';
   studentName: string;
   studentId: string;
+  studentEmail?: string; // Add this property
   submittedAt: Date;
   periods?: number; // For OD requests
 }

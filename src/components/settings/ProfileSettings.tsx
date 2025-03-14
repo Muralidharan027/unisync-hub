@@ -8,7 +8,11 @@ import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
 import { Switch } from "@/components/ui/switch";
 
-export default function ProfileSettings() {
+interface ProfileSettingsProps {
+  role?: 'student' | 'staff' | 'admin';
+}
+
+export default function ProfileSettings({ role }: ProfileSettingsProps) {
   const { toast } = useToast();
   const { profile, updateProfile } = useAuth();
   const [fullName, setFullName] = useState("");

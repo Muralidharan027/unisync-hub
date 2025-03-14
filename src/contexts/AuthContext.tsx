@@ -217,7 +217,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         mockUser.profile.email = email;
         
         if (role === 'student' && studentId) {
-          mockUser.profile.student_id = studentId;
+          (mockUser.profile as { student_id?: string }).student_id = studentId;
         }
         
         setUser(mockUser);

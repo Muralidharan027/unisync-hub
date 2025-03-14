@@ -30,8 +30,8 @@ export default function StaffDashboard() {
     const uniqueStudentEmails = new Set();
     
     requests.forEach(req => {
-      if (req.studentEmail) {
-        uniqueStudentEmails.add(req.studentEmail);
+      if ((req as any).studentEmail) {
+        uniqueStudentEmails.add((req as any).studentEmail);
       }
     });
     
