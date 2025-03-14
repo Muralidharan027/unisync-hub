@@ -10,11 +10,12 @@ type User = { id: string; email: string; };
 type Profile = {
   id: string;
   role: UserRole;
-  full_name: string;
+  full_name: string | null;
   email: string;
-  student_id?: string;
-  staff_id?: string;
-  admin_id?: string;
+  // Make all role-specific IDs optional but available on all profiles
+  student_id?: string | null;
+  staff_id?: string | null;
+  admin_id?: string | null;
   phone?: string | null;
   avatar_url?: string | null;
 };
