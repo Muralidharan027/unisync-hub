@@ -196,7 +196,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         email,
         phone: null,
         avatar_url: null,
-      }
+      } as Profile
     };
     
     // Add role-specific IDs
