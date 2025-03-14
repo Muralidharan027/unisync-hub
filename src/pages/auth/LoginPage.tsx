@@ -22,6 +22,7 @@ import {
   SelectTrigger, 
   SelectValue 
 } from "@/components/ui/select";
+import { validateRegisterNumber } from '@/utils/validation';
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
@@ -37,10 +38,21 @@ export default function LoginPage() {
     e.preventDefault();
     setIsSubmitting(true);
     
-    if (!email || !password || !id) {
+    if (!email || !id || (role !== 'student' && !password)) {
       toast({
         title: "Missing information",
-        description: "Please fill in all fields",
+        description: "Please fill in all required fields",
+        variant: "destructive",
+      });
+      setIsSubmitting(false);
+      return;
+    }
+
+    // For students, validate the register number format
+    if (role === 'student' && !validateRegisterNumber(id)) {
+      toast({
+        title: "Invalid Register Number",
+        description: "Register Number must be exactly 13 digits",
         variant: "destructive",
       });
       setIsSubmitting(false);
@@ -48,7 +60,9 @@ export default function LoginPage() {
     }
 
     try {
-      await signIn(email, password, { role, id });
+      // For students, use the register number as the password
+      const finalPassword = role === 'student' ? id : password;
+      await signIn(email, finalPassword, { role, id });
     } catch (error) {
       console.error("Login error:", error);
       // Error is already handled in the signIn function
@@ -60,7 +74,7 @@ export default function LoginPage() {
   const getIdLabel = () => {
     switch (role) {
       case 'student':
-        return 'Student ID';
+        return 'Register Number (13 digits)';
       case 'staff':
         return 'Staff ID';
       case 'admin':
@@ -111,23 +125,28 @@ export default function LoginPage() {
               <Input
                 id="id"
                 type="text"
-                placeholder={`Enter your ${role} ID`}
+                placeholder={role === 'student' ? "Enter your 13-digit Register Number" : `Enter your ${role} ID`}
                 value={id}
                 onChange={(e) => setId(e.target.value)}
                 required
               />
+              {role === 'student' && (
+                <p className="text-xs text-gray-500">Your Register Number serves as both your ID and password</p>
+              )}
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="password">Password</Label>
-              <Input
-                id="password"
-                type="password"
-                placeholder="••••••••"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-              />
-            </div>
+            {role !== 'student' && (
+              <div className="space-y-2">
+                <Label htmlFor="password">Password</Label>
+                <Input
+                  id="password"
+                  type="password"
+                  placeholder="••••••••"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  required
+                />
+              </div>
+            )}
           </CardContent>
           <CardFooter className="flex flex-col space-y-2">
             <Button type="submit" className="w-full" disabled={isSubmitting || loading}>

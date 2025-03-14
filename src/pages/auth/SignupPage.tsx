@@ -1,5 +1,5 @@
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Button } from "@/components/ui/button";
 import {
@@ -22,7 +22,7 @@ import {
   SelectTrigger, 
   SelectValue 
 } from "@/components/ui/select";
-import { validateEmail, validatePassword } from '@/utils/validation';
+import { validateEmail, validatePassword, validateRegisterNumber } from '@/utils/validation';
 
 export default function SignupPage() {
   const [email, setEmail] = useState('');
@@ -36,15 +36,23 @@ export default function SignupPage() {
   const { signUp, validateStudentId, loading } = useAuth();
   const navigate = useNavigate();
 
+  // For student role, use register number as password
+  useEffect(() => {
+    if (role === 'student' && id) {
+      setPassword(id);
+      setConfirmPassword(id);
+    }
+  }, [role, id]);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
     
     // Form validation
-    if (!email || !password || !confirmPassword || !fullName || !id) {
+    if (!email || !fullName || !id) {
       toast({
         title: "Missing information",
-        description: "Please fill in all fields",
+        description: "Please fill in all required fields",
         variant: "destructive",
       });
       setIsSubmitting(false);
@@ -61,24 +69,54 @@ export default function SignupPage() {
       return;
     }
 
-    if (!validatePassword(password)) {
-      toast({
-        title: "Password too short",
-        description: "Password must be at least 6 characters long",
-        variant: "destructive",
-      });
-      setIsSubmitting(false);
-      return;
-    }
+    // Student-specific validation
+    if (role === 'student') {
+      if (!validateRegisterNumber(id)) {
+        toast({
+          title: "Invalid Register Number",
+          description: "Register Number must be exactly 13 digits",
+          variant: "destructive",
+        });
+        setIsSubmitting(false);
+        return;
+      }
+      
+      // For students, use the register number as the password
+      if (password !== id) {
+        setPassword(id);
+        setConfirmPassword(id);
+      }
+    } else {
+      // Password validation for non-student roles
+      if (!password || !confirmPassword) {
+        toast({
+          title: "Missing password",
+          description: "Please enter and confirm your password",
+          variant: "destructive",
+        });
+        setIsSubmitting(false);
+        return;
+      }
 
-    if (password !== confirmPassword) {
-      toast({
-        title: "Passwords do not match",
-        description: "Please ensure both passwords match",
-        variant: "destructive",
-      });
-      setIsSubmitting(false);
-      return;
+      if (!validatePassword(password)) {
+        toast({
+          title: "Password too short",
+          description: "Password must be at least 6 characters long",
+          variant: "destructive",
+        });
+        setIsSubmitting(false);
+        return;
+      }
+
+      if (password !== confirmPassword) {
+        toast({
+          title: "Passwords do not match",
+          description: "Please ensure both passwords match",
+          variant: "destructive",
+        });
+        setIsSubmitting(false);
+        return;
+      }
     }
 
     // Role-specific validation
@@ -93,7 +131,9 @@ export default function SignupPage() {
     }
 
     try {
-      await signUp(email, password, role, { fullName, id });
+      // For students, the password is the same as the register number
+      const finalPassword = role === 'student' ? id : password;
+      await signUp(email, finalPassword, role, { fullName, id });
     } catch (error) {
       console.error("Signup error:", error);
       // Error is handled in the signUp function
@@ -104,7 +144,7 @@ export default function SignupPage() {
   const getIdLabel = () => {
     switch (role) {
       case 'student':
-        return 'Student ID';
+        return 'Register Number (13 digits)';
       case 'staff':
         return 'Staff ID';
       case 'admin':
@@ -166,39 +206,44 @@ export default function SignupPage() {
               <Input
                 id="id"
                 type="text"
-                placeholder={`Enter your ${role} ID`}
+                placeholder={role === 'student' ? "Enter your 13-digit Register Number" : `Enter your ${role} ID`}
                 value={id}
                 onChange={(e) => setId(e.target.value)}
                 required
               />
               {role === 'student' && (
                 <p className="text-xs text-muted-foreground">
-                  Valid student IDs: 60821-60830
+                  Your Register Number will also be used as your password. Valid student IDs: 60821-60830
                 </p>
               )}
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="password">Password</Label>
-              <Input
-                id="password"
-                type="password"
-                placeholder="••••••••"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="confirm-password">Confirm Password</Label>
-              <Input
-                id="confirm-password"
-                type="password"
-                placeholder="••••••••"
-                value={confirmPassword}
-                onChange={(e) => setConfirmPassword(e.target.value)}
-                required
-              />
-            </div>
+            
+            {role !== 'student' && (
+              <>
+                <div className="space-y-2">
+                  <Label htmlFor="password">Password</Label>
+                  <Input
+                    id="password"
+                    type="password"
+                    placeholder="••••••••"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    required
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="confirm-password">Confirm Password</Label>
+                  <Input
+                    id="confirm-password"
+                    type="password"
+                    placeholder="••••••••"
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    required
+                  />
+                </div>
+              </>
+            )}
           </CardContent>
           <CardFooter className="flex flex-col space-y-2">
             <Button type="submit" className="w-full" disabled={isSubmitting || loading}>

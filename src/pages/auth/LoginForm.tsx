@@ -24,17 +24,9 @@ type LoginFormProps = {
 export default function LoginForm({ role }: LoginFormProps) {
   const [email, setEmail] = useState('');
   const [id, setId] = useState('');
-  const [password, setPassword] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { toast } = useToast();
   const { signIn, loading } = useAuth();
-
-  // For student role, use register number as both ID and password
-  useEffect(() => {
-    if (role === 'student' && id) {
-      setPassword(id);
-    }
-  }, [role, id]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -62,25 +54,12 @@ export default function LoginForm({ role }: LoginFormProps) {
         setIsSubmitting(false);
         return;
       }
-      
-      // For students, the ID (register number) is also the password
-      if (password !== id) {
-        setPassword(id);
-      }
-    } else if (!password) {
-      toast({
-        title: "Missing password",
-        description: "Please enter your password",
-        variant: "destructive",
-      });
-      setIsSubmitting(false);
-      return;
     }
 
     try {
       // Call signIn with role-specific data
-      const finalPassword = role === 'student' ? id : password;
-      await signIn(email, finalPassword, { role, id });
+      // For students, use the register number as the password
+      await signIn(email, id, { role, id });
     } catch (error: any) {
       console.error("Login error:", error);
       toast({
@@ -147,8 +126,6 @@ export default function LoginForm({ role }: LoginFormProps) {
                   id="password"
                   type="password"
                   placeholder="••••••••"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
                   required
                 />
               </div>

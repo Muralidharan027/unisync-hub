@@ -141,7 +141,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       setLoading(true);
       
-      // In development mode with mock data
       if (process.env.NODE_ENV === 'development' && !import.meta.env.VITE_USE_SUPABASE) {
         // Simulate authentication delay
         await new Promise(resolve => setTimeout(resolve, 1000));
@@ -156,20 +155,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           
           if (role === 'student' && roleData?.id) {
             // Safe check for student_id property
-            const studentId = mockUser.profile.student_id;
-            if (studentId && studentId === roleData.id) {
+            if (mockUser.profile.student_id === roleData.id) {
               idValid = true;
             }
           } else if (role === 'staff' && roleData?.id) {
             // Safe check for staff_id property
-            const staffId = mockUser.profile.staff_id;
-            if (staffId && staffId === roleData.id) {
+            if (mockUser.profile.staff_id === roleData.id) {
               idValid = true;
             }
           } else if (role === 'admin' && roleData?.id) {
             // Safe check for admin_id property
-            const adminId = mockUser.profile.admin_id;
-            if (adminId && adminId === roleData.id) {
+            if (mockUser.profile.admin_id === roleData.id) {
               idValid = true;
             }
           }
@@ -197,9 +193,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
       } else {
         // Real Supabase authentication
+        // For students, use the ID (register number) as the password
+        const finalPassword = roleData?.role === 'student' ? roleData.id : password;
+        
         const { data, error } = await supabase.auth.signInWithPassword({
           email,
-          password,
+          password: finalPassword,
         });
         
         if (error) throw error;
@@ -222,18 +221,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             
             // Validate ID based on role with safe property access
             if (roleData.role === 'student') {
-              const studentId = profileData.student_id;
-              if (!studentId || studentId !== roleData.id) {
+              if (!profileData.student_id || profileData.student_id !== roleData.id) {
                 throw new Error('Invalid Student ID');
               }
             } else if (roleData.role === 'staff') {
-              const staffId = profileData.staff_id;
-              if (!staffId || staffId !== roleData.id) {
+              if (!profileData.staff_id || profileData.staff_id !== roleData.id) {
                 throw new Error('Invalid Staff ID');
               }
             } else if (roleData.role === 'admin') {
-              const adminId = profileData.admin_id;
-              if (!adminId || adminId !== roleData.id) {
+              if (!profileData.admin_id || profileData.admin_id !== roleData.id) {
                 throw new Error('Invalid Admin ID');
               }
             }
@@ -286,14 +282,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         
         // Update the appropriate ID field based on role
         if (role === 'student') {
-          mockUser.profile.student_id = userData.id;
+          if (mockUser.profile) {
+            mockUser.profile.student_id = userData.id;
+          }
         } else if (role === 'staff') {
-          mockUser.profile.staff_id = userData.id;
+          if (mockUser.profile) {
+            mockUser.profile.staff_id = userData.id;
+          }
         } else if (role === 'admin') {
-          mockUser.profile.admin_id = userData.id;
+          if (mockUser.profile) {
+            mockUser.profile.admin_id = userData.id;
+          }
         }
         
-        mockUser.profile.full_name = userData.fullName;
+        if (mockUser.profile) {
+          mockUser.profile.full_name = userData.fullName;
+        }
         
         setUser(mockUser);
         setProfile(mockUser.profile);
@@ -311,9 +315,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         });
       } else {
         // Real Supabase signup
+        // For students, ensure password is the same as the ID (register number)
+        const finalPassword = role === 'student' ? userData.id : password;
+        
         const { data, error } = await supabase.auth.signUp({
           email,
-          password,
+          password: finalPassword,
           options: {
             data: {
               full_name: userData.fullName,
