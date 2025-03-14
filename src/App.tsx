@@ -6,8 +6,10 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import RoleSelection from "./pages/auth/RoleSelection";
 import LoginPage from "./pages/auth/LoginPage";
+import RoleLoginPage from "./pages/auth/RoleLoginPage";
 import SignupPage from "./pages/auth/SignupPage";
 import { AuthProvider } from "./contexts/AuthContext";
+import ProtectedRoute from "./components/auth/ProtectedRoute";
 
 // Student Pages
 import StudentDashboard from "./pages/student/DashboardPage";
@@ -41,28 +43,134 @@ const App = () => (
             
             {/* Auth Routes */}
             <Route path="/auth/login" element={<LoginPage />} />
+            <Route path="/auth/:role/login" element={<RoleLoginPage />} />
             <Route path="/auth/signup" element={<SignupPage />} />
             
             {/* Student Routes */}
-            <Route path="/student/dashboard" element={<StudentDashboard />} />
-            <Route path="/student/announcements" element={<StudentAnnouncementsPage />} />
-            <Route path="/student/leave" element={<StudentLeaveManagementPage />} />
-            <Route path="/student/settings/:section" element={<StudentSettingsPage />} />
-            <Route path="/student/settings" element={<StudentSettingsPage />} />
+            <Route 
+              path="/student/dashboard" 
+              element={
+                <ProtectedRoute role="student">
+                  <StudentDashboard />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/student/announcements" 
+              element={
+                <ProtectedRoute role="student">
+                  <StudentAnnouncementsPage />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/student/leave" 
+              element={
+                <ProtectedRoute role="student">
+                  <StudentLeaveManagementPage />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/student/settings/:section" 
+              element={
+                <ProtectedRoute role="student">
+                  <StudentSettingsPage />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/student/settings" 
+              element={
+                <ProtectedRoute role="student">
+                  <StudentSettingsPage />
+                </ProtectedRoute>
+              } 
+            />
             
             {/* Staff Routes */}
-            <Route path="/staff/dashboard" element={<StaffDashboard />} />
-            <Route path="/staff/announcements" element={<StaffAnnouncementsPage />} />
-            <Route path="/staff/leave" element={<StaffLeaveManagementPage />} />
-            <Route path="/staff/settings/:section" element={<StaffSettingsPage />} />
-            <Route path="/staff/settings" element={<StaffSettingsPage />} />
+            <Route 
+              path="/staff/dashboard" 
+              element={
+                <ProtectedRoute role="staff">
+                  <StaffDashboard />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/staff/announcements" 
+              element={
+                <ProtectedRoute role="staff">
+                  <StaffAnnouncementsPage />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/staff/leave" 
+              element={
+                <ProtectedRoute role="staff">
+                  <StaffLeaveManagementPage />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/staff/settings/:section" 
+              element={
+                <ProtectedRoute role="staff">
+                  <StaffSettingsPage />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/staff/settings" 
+              element={
+                <ProtectedRoute role="staff">
+                  <StaffSettingsPage />
+                </ProtectedRoute>
+              } 
+            />
             
             {/* Admin Routes */}
-            <Route path="/admin/dashboard" element={<AdminDashboard />} />
-            <Route path="/admin/announcements" element={<AdminAnnouncementsPage />} />
-            <Route path="/admin/leave" element={<AdminLeaveManagementPage />} />
-            <Route path="/admin/settings/:section" element={<AdminSettingsPage />} />
-            <Route path="/admin/settings" element={<AdminSettingsPage />} />
+            <Route 
+              path="/admin/dashboard" 
+              element={
+                <ProtectedRoute role="admin">
+                  <AdminDashboard />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/admin/announcements" 
+              element={
+                <ProtectedRoute role="admin">
+                  <AdminAnnouncementsPage />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/admin/leave" 
+              element={
+                <ProtectedRoute role="admin">
+                  <AdminLeaveManagementPage />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/admin/settings/:section" 
+              element={
+                <ProtectedRoute role="admin">
+                  <AdminSettingsPage />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/admin/settings" 
+              element={
+                <ProtectedRoute role="admin">
+                  <AdminSettingsPage />
+                </ProtectedRoute>
+              } 
+            />
           </Routes>
         </AuthProvider>
       </BrowserRouter>

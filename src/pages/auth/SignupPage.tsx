@@ -1,6 +1,6 @@
 
 import { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -15,23 +15,56 @@ import { Label } from "@/components/ui/label";
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { Loader2, UserPlus } from 'lucide-react';
+import { 
+  Select, 
+  SelectContent, 
+  SelectItem, 
+  SelectTrigger, 
+  SelectValue 
+} from "@/components/ui/select";
+import { validateEmail, validatePassword } from '@/utils/validation';
 
 export default function SignupPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [fullName, setFullName] = useState('');
+  const [role, setRole] = useState<'student' | 'staff' | 'admin'>('student');
+  const [id, setId] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { toast } = useToast();
-  const { signUp, loading } = useAuth();
+  const { signUp, validateStudentId, loading } = useAuth();
+  const navigate = useNavigate();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
     
-    if (!email || !password || !confirmPassword) {
+    // Form validation
+    if (!email || !password || !confirmPassword || !fullName || !id) {
       toast({
         title: "Missing information",
         description: "Please fill in all fields",
+        variant: "destructive",
+      });
+      setIsSubmitting(false);
+      return;
+    }
+
+    if (!validateEmail(email)) {
+      toast({
+        title: "Invalid email",
+        description: "Please enter a valid email address",
+        variant: "destructive",
+      });
+      setIsSubmitting(false);
+      return;
+    }
+
+    if (!validatePassword(password)) {
+      toast({
+        title: "Password too short",
+        description: "Password must be at least 6 characters long",
         variant: "destructive",
       });
       setIsSubmitting(false);
@@ -48,21 +81,34 @@ export default function SignupPage() {
       return;
     }
 
-    try {
-      // Store the email and password, then redirect to role selection
-      localStorage.setItem("tempEmail", email);
-      localStorage.setItem("tempPassword", password);
-      
-      // Navigate to role selection
-      window.location.href = "/";
-      
+    // Role-specific validation
+    if (role === 'student' && !validateStudentId(id)) {
       toast({
-        title: "Account ready",
-        description: "Please select your role to complete registration",
+        title: "Invalid Student ID",
+        description: "Please enter a valid student ID",
+        variant: "destructive",
       });
+      setIsSubmitting(false);
+      return;
+    }
+
+    try {
+      await signUp(email, password, role, { fullName, id });
     } catch (error) {
       console.error("Signup error:", error);
+      // Error is handled in the signUp function
       setIsSubmitting(false);
+    }
+  };
+
+  const getIdLabel = () => {
+    switch (role) {
+      case 'student':
+        return 'Student ID';
+      case 'staff':
+        return 'Staff ID';
+      case 'admin':
+        return 'Admin Code';
     }
   };
 
@@ -87,6 +133,49 @@ export default function SignupPage() {
                 onChange={(e) => setEmail(e.target.value)}
                 required
               />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="fullName">Full Name</Label>
+              <Input
+                id="fullName"
+                type="text"
+                placeholder="John Doe"
+                value={fullName}
+                onChange={(e) => setFullName(e.target.value)}
+                required
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="role">Role</Label>
+              <Select 
+                value={role} 
+                onValueChange={(value) => setRole(value as 'student' | 'staff' | 'admin')}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select your role" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="student">Student</SelectItem>
+                  <SelectItem value="staff">Staff</SelectItem>
+                  <SelectItem value="admin">Admin</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="id">{getIdLabel()}</Label>
+              <Input
+                id="id"
+                type="text"
+                placeholder={`Enter your ${role} ID`}
+                value={id}
+                onChange={(e) => setId(e.target.value)}
+                required
+              />
+              {role === 'student' && (
+                <p className="text-xs text-muted-foreground">
+                  Valid student IDs: 60821-60830
+                </p>
+              )}
             </div>
             <div className="space-y-2">
               <Label htmlFor="password">Password</Label>

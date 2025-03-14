@@ -1,7 +1,29 @@
+
 import { createContext, useContext, useState, useEffect, ReactNode } from "react";
 import { useNavigate } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
+
+// Types
+type UserRole = "student" | "staff" | "admin";
+type User = { id: string; email: string; };
+type Profile = {
+  id: string;
+  role: UserRole;
+  full_name: string;
+  email: string;
+  student_id?: string;
+  staff_id?: string;
+  admin_id?: string;
+  phone?: string | null;
+  avatar_url?: string | null;
+};
+
+// Valid student IDs
+export const VALID_STUDENT_IDS = [
+  "60821", "60822", "60823", "60824", "60825", 
+  "60826", "60827", "60828", "60829", "60830"
+];
 
 // Mock user data for different roles
 const MOCK_USERS = {
@@ -13,7 +35,7 @@ const MOCK_USERS = {
       role: "student" as UserRole,
       full_name: "Student User",
       email: "student@example.com",
-      student_id: "STU001",
+      student_id: "60821",
       phone: null,
       avatar_url: null,
     }
@@ -46,33 +68,12 @@ const MOCK_USERS = {
   }
 };
 
-// Valid student IDs
-export const VALID_STUDENT_IDS = [
-  "60821", "60822", "60823", "60824", "60825", 
-  "60826", "60827", "60828", "60829", "60830"
-];
-
-// Types
-type UserRole = "student" | "staff" | "admin";
-type User = { id: string; email: string; };
-type Profile = {
-  id: string;
-  role: UserRole;
-  full_name: string;
-  email: string;
-  student_id?: string;
-  staff_id?: string;
-  admin_id?: string;
-  phone?: string | null;
-  avatar_url?: string | null;
-};
-
 interface AuthContextType {
   user: User | null;
   profile: Profile | null;
   loading: boolean;
-  signIn: (email: string, password: string) => Promise<void>;
-  signUp: (email: string, password: string, role: UserRole, studentId?: string) => Promise<void>;
+  signIn: (email: string, password: string, roleData?: { role: UserRole; id: string }) => Promise<void>;
+  signUp: (email: string, password: string, role: UserRole, userData: { fullName: string; id: string }) => Promise<void>;
   signOut: () => Promise<void>;
   validateStudentId: (studentId: string) => boolean;
 }
@@ -92,13 +93,37 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const checkSession = async () => {
       try {
-        // Check localStorage for a saved session
-        const savedEmail = localStorage.getItem("userEmail");
-        const savedRole = localStorage.getItem("userRole") as UserRole | null;
+        const { data: { session } } = await supabase.auth.getSession();
         
-        if (savedEmail && savedRole && MOCK_USERS[savedRole]) {
-          setUser(MOCK_USERS[savedRole]);
-          setProfile(MOCK_USERS[savedRole].profile);
+        if (session) {
+          // We have a valid session, get the user
+          const { user } = session;
+          setUser({ id: user.id, email: user.email || '' });
+          
+          // Fetch the user profile
+          const { data: profileData, error } = await supabase
+            .from('profiles')
+            .select('*')
+            .eq('id', user.id)
+            .single();
+            
+          if (error) {
+            throw error;
+          }
+          
+          if (profileData) {
+            setProfile(profileData as Profile);
+            localStorage.setItem("userRole", profileData.role);
+          }
+        } else {
+          // Check localStorage for mock data in development
+          const savedEmail = localStorage.getItem("userEmail");
+          const savedRole = localStorage.getItem("userRole") as UserRole | null;
+          
+          if (savedEmail && savedRole && MOCK_USERS[savedRole]) {
+            setUser(MOCK_USERS[savedRole]);
+            setProfile(MOCK_USERS[savedRole].profile);
+          }
         }
       } catch (error) {
         console.error("Session check error:", error);
@@ -111,29 +136,99 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   // Sign in function
-  const signIn = async (email: string, password: string) => {
+  const signIn = async (email: string, password: string, roleData?: { role: UserRole; id: string }) => {
     try {
       setLoading(true);
       
-      // Simulate authentication delay
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      // In a real app, we would call supabase.auth.signInWithPassword here
-      // For now, we'll simulate successful login if the password is not empty
-      if (!email || !password) {
-        throw new Error("Email and password are required");
+      // In development mode with mock data
+      if (process.env.NODE_ENV === 'development' && !import.meta.env.VITE_USE_SUPABASE) {
+        // Simulate authentication delay
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        
+        // Check if credentials match mock users
+        const role = roleData?.role || 'student';
+        const mockUser = MOCK_USERS[role];
+        
+        if (mockUser && mockUser.email === email) {
+          // Validate role-specific ID
+          let idValid = false;
+          
+          if (role === 'student' && roleData?.id && VALID_STUDENT_IDS.includes(roleData.id)) {
+            idValid = true;
+          } else if (role === 'staff' && roleData?.id === 'STA001') {
+            idValid = true;
+          } else if (role === 'admin' && roleData?.id === 'ADM001') {
+            idValid = true;
+          }
+          
+          if (!idValid) {
+            throw new Error(`Invalid ${role} ID`);
+          }
+          
+          setUser(mockUser);
+          setProfile(mockUser.profile);
+          
+          // Save role and email to localStorage
+          localStorage.setItem("userRole", role);
+          localStorage.setItem("userEmail", email);
+          
+          // Navigate to dashboard
+          navigate(`/${role}/dashboard`);
+          
+          toast({
+            title: "Sign in successful",
+            description: `Welcome back, ${mockUser.profile.full_name}!`,
+          });
+        } else {
+          throw new Error("Invalid login credentials");
+        }
+      } else {
+        // Real Supabase authentication
+        const { data, error } = await supabase.auth.signInWithPassword({
+          email,
+          password,
+        });
+        
+        if (error) throw error;
+        
+        if (data.user) {
+          // Fetch the user profile
+          const { data: profileData, error: profileError } = await supabase
+            .from('profiles')
+            .select('*')
+            .eq('id', data.user.id)
+            .single();
+            
+          if (profileError) throw profileError;
+
+          // Role-specific validations
+          if (roleData) {
+            if (profileData.role !== roleData.role) {
+              throw new Error(`This account is not registered as a ${roleData.role}`);
+            }
+            
+            // Validate ID based on role
+            if (roleData.role === 'student' && profileData.student_id !== roleData.id) {
+              throw new Error('Invalid Student ID');
+            } else if (roleData.role === 'staff' && profileData.staff_id !== roleData.id) {
+              throw new Error('Invalid Staff ID');
+            } else if (roleData.role === 'admin' && profileData.admin_id !== roleData.id) {
+              throw new Error('Invalid Admin ID');
+            }
+          }
+          
+          setUser({ id: data.user.id, email: data.user.email || '' });
+          setProfile(profileData as Profile);
+          
+          // Navigate to dashboard
+          navigate(`/${profileData.role}/dashboard`);
+          
+          toast({
+            title: "Sign in successful",
+            description: `Welcome back, ${profileData.full_name}!`,
+          });
+        }
       }
-      
-      // Store email for the role selection page
-      localStorage.setItem("userEmail", email);
-      
-      // Navigate to role selection
-      navigate('/');
-      
-      toast({
-        title: "Sign in successful",
-        description: "Please select your role to continue.",
-      });
     } catch (error: any) {
       console.error("Sign in error:", error);
       toast({
@@ -141,34 +236,41 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         description: error.message || "Please check your credentials and try again.",
         variant: "destructive",
       });
+      throw error;
     } finally {
       setLoading(false);
     }
   };
 
   // Sign up function
-  const signUp = async (email: string, password: string, role: UserRole, studentId?: string) => {
+  const signUp = async (email: string, password: string, role: UserRole, userData: { fullName: string; id: string }) => {
     try {
       setLoading(true);
       
-      // In a real app, we would call supabase.auth.signUp here
-      // For student role, validate student ID
-      if (role === 'student') {
-        if (!studentId || !validateStudentId(studentId)) {
-          throw new Error("Invalid student ID");
+      if (process.env.NODE_ENV === 'development' && !import.meta.env.VITE_USE_SUPABASE) {
+        // Simulate signup delay
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        
+        // For student role, validate student ID
+        if (role === 'student') {
+          if (!validateStudentId(userData.id)) {
+            throw new Error("Invalid student ID");
+          }
         }
-      }
-      
-      // Simulate signup delay
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      // Create mock user with the selected role
-      if (MOCK_USERS[role]) {
-        const mockUser = MOCK_USERS[role];
+        
+        // Create mock user with the selected role
+        const mockUser = { ...MOCK_USERS[role] };
         mockUser.email = email;
-        if (role === 'student' && studentId) {
-          (mockUser.profile as any).student_id = studentId;
+        
+        if (role === 'student') {
+          mockUser.profile.student_id = userData.id;
+        } else if (role === 'staff') {
+          mockUser.profile.staff_id = userData.id;
+        } else if (role === 'admin') {
+          mockUser.profile.admin_id = userData.id;
         }
+        
+        mockUser.profile.full_name = userData.fullName;
         
         setUser(mockUser);
         setProfile(mockUser.profile);
@@ -182,10 +284,53 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         
         toast({
           title: "Account created",
-          description: `Welcome to UniSync, ${mockUser.profile.full_name}!`,
+          description: `Welcome to UniSync, ${userData.fullName}!`,
         });
       } else {
-        throw new Error("Invalid role");
+        // Real Supabase signup
+        const { data, error } = await supabase.auth.signUp({
+          email,
+          password,
+          options: {
+            data: {
+              full_name: userData.fullName,
+              role,
+              [`${role}_id`]: userData.id,
+            }
+          }
+        });
+        
+        if (error) throw error;
+        
+        if (data.user) {
+          setUser({ id: data.user.id, email: data.user.email || '' });
+          
+          // Create profile object from user metadata
+          const newProfile: Profile = {
+            id: data.user.id,
+            email: data.user.email || '',
+            full_name: userData.fullName,
+            role,
+          };
+          
+          if (role === 'student') {
+            newProfile.student_id = userData.id;
+          } else if (role === 'staff') {
+            newProfile.staff_id = userData.id;
+          } else if (role === 'admin') {
+            newProfile.admin_id = userData.id;
+          }
+          
+          setProfile(newProfile);
+          
+          // Navigate to dashboard
+          navigate(`/${role}/dashboard`);
+          
+          toast({
+            title: "Account created",
+            description: `Welcome to UniSync, ${userData.fullName}!`,
+          });
+        }
       }
     } catch (error: any) {
       console.error("Sign up error:", error);
@@ -194,6 +339,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         description: error.message || "An error occurred during sign up.",
         variant: "destructive",
       });
+      throw error;
     } finally {
       setLoading(false);
     }
@@ -209,13 +355,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       setLoading(true);
       
-      // Clear state and localStorage
-      setUser(null);
-      setProfile(null);
-      localStorage.removeItem("userRole");
-      
-      // Keep email for next login
-      // (In a real app, we would call supabase.auth.signOut here)
+      if (process.env.NODE_ENV === 'development' && !import.meta.env.VITE_USE_SUPABASE) {
+        // Clear state and localStorage
+        setUser(null);
+        setProfile(null);
+        localStorage.removeItem("userRole");
+        localStorage.removeItem("userEmail");
+      } else {
+        // Real Supabase signout
+        const { error } = await supabase.auth.signOut();
+        if (error) throw error;
+        
+        setUser(null);
+        setProfile(null);
+      }
       
       // Navigate to login
       navigate("/auth/login");

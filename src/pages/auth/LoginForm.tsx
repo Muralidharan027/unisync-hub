@@ -14,6 +14,7 @@ import { Label } from "@/components/ui/label";
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { Loader2 } from 'lucide-react';
+import { validateStudentId } from '@/utils/validation';
 
 type LoginFormProps = {
   role: 'student' | 'staff' | 'admin';
@@ -22,6 +23,7 @@ type LoginFormProps = {
 export default function LoginForm({ role }: LoginFormProps) {
   const [email, setEmail] = useState('');
   const [id, setId] = useState('');
+  const [password, setPassword] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { toast } = useToast();
   const { signIn, loading } = useAuth();
@@ -30,8 +32,8 @@ export default function LoginForm({ role }: LoginFormProps) {
     e.preventDefault();
     setIsSubmitting(true);
     
-    // Mock credentials validation
-    if (!email || !id) {
+    // Form validation
+    if (!email || !password || !id) {
       toast({
         title: "Missing information",
         description: "Please fill in all fields",
@@ -41,11 +43,27 @@ export default function LoginForm({ role }: LoginFormProps) {
       return;
     }
 
+    // Student ID validation if role is student
+    if (role === 'student' && !validateStudentId(id)) {
+      toast({
+        title: "Invalid Student ID",
+        description: "Please enter a valid student ID",
+        variant: "destructive",
+      });
+      setIsSubmitting(false);
+      return;
+    }
+
     try {
-      // Updated to match the signIn function signature (email, password)
-      await signIn(email, id);
-    } catch (error) {
+      // Call signIn with role-specific data
+      await signIn(email, password, { role, id });
+    } catch (error: any) {
       console.error("Login error:", error);
+      toast({
+        title: "Login failed",
+        description: error.message || "Please check your credentials and try again.",
+        variant: "destructive",
+      });
     } finally {
       setIsSubmitting(false);
     }
@@ -92,6 +110,17 @@ export default function LoginForm({ role }: LoginFormProps) {
                 placeholder="Enter your ID"
                 value={id}
                 onChange={(e) => setId(e.target.value)}
+                required
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="password">Password</Label>
+              <Input
+                id="password"
+                type="password"
+                placeholder="••••••••"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
                 required
               />
             </div>

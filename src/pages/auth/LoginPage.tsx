@@ -1,6 +1,6 @@
 
 import { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -15,19 +15,29 @@ import { Label } from "@/components/ui/label";
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { Loader2, LogIn } from 'lucide-react';
+import { 
+  Select, 
+  SelectContent, 
+  SelectItem, 
+  SelectTrigger, 
+  SelectValue 
+} from "@/components/ui/select";
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [role, setRole] = useState<'student' | 'staff' | 'admin'>('student');
+  const [id, setId] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { toast } = useToast();
   const { signIn, loading } = useAuth();
+  const navigate = useNavigate();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
     
-    if (!email || !password) {
+    if (!email || !password || !id) {
       toast({
         title: "Missing information",
         description: "Please fill in all fields",
@@ -38,11 +48,23 @@ export default function LoginPage() {
     }
 
     try {
-      await signIn(email, password);
+      await signIn(email, password, { role, id });
     } catch (error) {
       console.error("Login error:", error);
+      // Error is already handled in the signIn function
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  const getIdLabel = () => {
+    switch (role) {
+      case 'student':
+        return 'Student ID';
+      case 'staff':
+        return 'Staff ID';
+      case 'admin':
+        return 'Admin Code';
     }
   };
 
@@ -65,6 +87,33 @@ export default function LoginPage() {
                 placeholder="your.email@example.com"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
+                required
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="role">Role</Label>
+              <Select 
+                value={role} 
+                onValueChange={(value) => setRole(value as 'student' | 'staff' | 'admin')}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select your role" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="student">Student</SelectItem>
+                  <SelectItem value="staff">Staff</SelectItem>
+                  <SelectItem value="admin">Admin</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="id">{getIdLabel()}</Label>
+              <Input
+                id="id"
+                type="text"
+                placeholder={`Enter your ${role} ID`}
+                value={id}
+                onChange={(e) => setId(e.target.value)}
                 required
               />
             </div>
