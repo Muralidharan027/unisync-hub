@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { FileClock, FileText, PlusCircle } from "lucide-react";
 import { ModuleTabs } from "@/components/ui/module-tabs";
@@ -7,7 +6,7 @@ import LeaveRequestForm, { LeaveRequestData } from "@/components/leave/LeaveRequ
 import LeaveRequestsList from "@/components/leave/LeaveRequestsList";
 import { LeaveRequest } from "@/components/leave/LeaveRequestCard";
 import { useToast } from "@/hooks/use-toast";
-import { useAuth } from "@/contexts/AuthContext";
+import { useAuth } from "@/hooks/useAuth";
 import { addLeaveRequest, getLeaveRequests } from "@/store/leaveRequests";
 
 export default function StudentLeaveManagementPage() {
@@ -23,7 +22,6 @@ export default function StudentLeaveManagementPage() {
     { id: "drafts", label: "Drafts", icon: <FileText /> },
   ];
   
-  // Load leave requests that belong to the current student
   useEffect(() => {
     if (profile) {
       const studentRequests = getLeaveRequests().filter(
@@ -33,7 +31,6 @@ export default function StudentLeaveManagementPage() {
     }
   }, [profile]);
   
-  // Subscribe to changes in the global leave requests
   useEffect(() => {
     const checkForUpdates = () => {
       if (profile) {
@@ -44,7 +41,6 @@ export default function StudentLeaveManagementPage() {
       }
     };
     
-    // Check for updates every 2 seconds
     const interval = setInterval(checkForUpdates, 2000);
     
     return () => clearInterval(interval);
@@ -53,7 +49,6 @@ export default function StudentLeaveManagementPage() {
   const handleSubmitLeaveRequest = (data: LeaveRequestData) => {
     setSubmitting(true);
     
-    // Simulate API call
     setTimeout(() => {
       const newRequest: LeaveRequest = {
         id: `request-${Date.now()}`,
@@ -69,10 +64,8 @@ export default function StudentLeaveManagementPage() {
         periods: data.type === 'od' ? data.periods : undefined
       };
       
-      // Add to global store
       addLeaveRequest(newRequest);
       
-      // Update local state
       setRequests(prev => [...prev, newRequest]);
       
       setSubmitting(false);
@@ -81,7 +74,6 @@ export default function StudentLeaveManagementPage() {
         description: `Your ${data.type === 'leave' ? 'leave' : 'OD'} request has been submitted successfully.`,
       });
       
-      // Switch to history tab after successful submission
       setActiveTab("history");
     }, 1500);
   };
@@ -100,14 +92,12 @@ export default function StudentLeaveManagementPage() {
     });
     
     try {
-      // Find the request data
       const requestData = requests.find(req => req.id === id);
       
       if (!requestData) {
         throw new Error("Request not found");
       }
       
-      // Call the serverless function to generate PDF
       const response = await fetch('https://fahqlerywybttjinbanp.functions.supabase.co/generate-pdf', {
         method: 'POST',
         headers: {
@@ -121,10 +111,8 @@ export default function StudentLeaveManagementPage() {
         throw new Error('Failed to generate PDF');
       }
       
-      // Get the PDF as a blob
       const blob = await response.blob();
       
-      // Create a download link
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;

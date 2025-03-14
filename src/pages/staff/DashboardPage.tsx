@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from "react";
 import { Bell, Calendar, FileClock, FileText, Home, Users } from "lucide-react";
 import DashboardLayout from "@/layouts/DashboardLayout";
@@ -10,7 +9,7 @@ import { LeaveRequest } from "@/components/leave/LeaveRequestCard";
 import { format } from "date-fns";
 import { getAnnouncements } from "@/store/announcements";
 import { getLeaveRequests } from "@/store/leaveRequests";
-import { useAuth } from "@/contexts/AuthContext";
+import { useAuth } from "@/hooks/useAuth";
 
 export default function StaffDashboard() {
   const { profile } = useAuth();
@@ -24,7 +23,6 @@ export default function StaffDashboard() {
   const [pendingRequests, setPendingRequests] = useState<LeaveRequest[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   
-  // Function to count unique student emails
   const countUniqueStudents = () => {
     const requests = getLeaveRequests();
     const uniqueStudentEmails = new Set();
@@ -35,15 +33,12 @@ export default function StaffDashboard() {
       }
     });
     
-    return uniqueStudentEmails.size > 0 ? uniqueStudentEmails.size : 10; // Fallback to 10 if no real data
+    return uniqueStudentEmails.size > 0 ? uniqueStudentEmails.size : 10;
   };
   
-  // Load leave requests
   useEffect(() => {
     setIsLoading(true);
     
-    // In a real app, we would fetch from Supabase
-    // For now, we'll use the global store with a timeout to simulate loading
     setTimeout(() => {
       const leaveRequests = getLeaveRequests();
       const pendingReqs = leaveRequests.filter(
@@ -52,7 +47,6 @@ export default function StaffDashboard() {
       
       setPendingRequests(pendingReqs);
       
-      // Update stats
       const pendingLeave = leaveRequests.filter(
         req => req.status === "pending" && req.type === "leave"
       ).length;
@@ -75,7 +69,6 @@ export default function StaffDashboard() {
     }, 800);
   }, []);
   
-  // Subscribe to changes in the global leave requests
   useEffect(() => {
     const checkForUpdates = () => {
       const leaveRequests = getLeaveRequests();
@@ -85,7 +78,6 @@ export default function StaffDashboard() {
       
       setPendingRequests(pendingReqs);
       
-      // Update stats
       const pendingLeave = leaveRequests.filter(
         req => req.status === "pending" && req.type === "leave"
       ).length;
@@ -105,7 +97,6 @@ export default function StaffDashboard() {
       ]);
     };
     
-    // Check for updates every 5 seconds
     const interval = setInterval(checkForUpdates, 5000);
     
     return () => clearInterval(interval);
@@ -132,7 +123,6 @@ export default function StaffDashboard() {
           </div>
         </div>
 
-        {/* Quick Stats */}
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
           {stats.map((stat) => (
             <Card key={stat.title}>
@@ -157,7 +147,6 @@ export default function StaffDashboard() {
           ))}
         </div>
 
-        {/* Pending Requests */}
         <Card>
           <CardHeader>
             <CardTitle>Pending Requests</CardTitle>

@@ -1,4 +1,3 @@
-
 import { useState, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
@@ -15,7 +14,7 @@ import {
 } from "@/components/ui/select";
 import { AnnouncementCategory } from "./AnnouncementCard";
 import { FileIcon, Trash2, Upload } from "lucide-react";
-import { useAuth } from "@/contexts/AuthContext";
+import { useAuth } from "@/hooks/useAuth";
 
 const categories: { value: AnnouncementCategory; label: string }[] = [
   { value: 'emergency', label: 'Emergency' },

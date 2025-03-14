@@ -1,11 +1,10 @@
-
 import { useEffect, useState } from "react";
 import { Bell, BookOpen, Calendar, FileClock, Home } from "lucide-react";
 import DashboardLayout from "@/layouts/DashboardLayout";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Link } from "react-router-dom";
-import { useAuth } from "@/contexts/AuthContext";
+import { useAuth } from "@/hooks/useAuth";
 import { LeaveRequest } from "@/components/leave/LeaveRequestCard";
 import { Announcement } from "@/components/announcements/AnnouncementCard";
 import { supabase } from "@/integrations/supabase/client";
