@@ -1,4 +1,3 @@
-
 import { createContext, useContext, useState, useEffect, ReactNode } from "react";
 import { useNavigate } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
@@ -154,11 +153,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           // Validate role-specific ID
           let idValid = false;
           
-          if (role === 'student' && roleData?.id && VALID_STUDENT_IDS.includes(roleData.id)) {
+          if (role === 'student' && roleData?.id && 
+              mockUser.profile.student_id && 
+              mockUser.profile.student_id === roleData.id) {
             idValid = true;
-          } else if (role === 'staff' && roleData?.id === 'STA001') {
+          } else if (role === 'staff' && roleData?.id && 
+                    mockUser.profile.staff_id &&
+                    mockUser.profile.staff_id === roleData.id) {
             idValid = true;
-          } else if (role === 'admin' && roleData?.id === 'ADM001') {
+          } else if (role === 'admin' && roleData?.id && 
+                    mockUser.profile.admin_id &&
+                    mockUser.profile.admin_id === roleData.id) {
             idValid = true;
           }
           
@@ -208,12 +213,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
               throw new Error(`This account is not registered as a ${roleData.role}`);
             }
             
+            // Type guard for role-specific ID properties
             // Validate ID based on role
-            if (roleData.role === 'student' && profileData.student_id !== roleData.id) {
+            if (roleData.role === 'student' && 
+                profileData.student_id !== roleData.id) {
               throw new Error('Invalid Student ID');
-            } else if (roleData.role === 'staff' && profileData.staff_id !== roleData.id) {
+            } else if (roleData.role === 'staff' && 
+                      profileData.staff_id !== roleData.id) {
               throw new Error('Invalid Staff ID');
-            } else if (roleData.role === 'admin' && profileData.admin_id !== roleData.id) {
+            } else if (roleData.role === 'admin' && 
+                      profileData.admin_id !== roleData.id) {
               throw new Error('Invalid Admin ID');
             }
           }
