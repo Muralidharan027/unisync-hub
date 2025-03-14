@@ -1,3 +1,4 @@
+
 import { createContext, useContext, useState, useEffect, ReactNode } from "react";
 import { useNavigate } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
@@ -18,7 +19,7 @@ type Profile = {
   avatar_url?: string | null;
 };
 
-// Valid student IDs
+// Valid student IDs - no longer used as we now validate 13-digit numbers directly
 export const VALID_STUDENT_IDS = [
   "60821", "60822", "60823", "60824", "60825", 
   "60826", "60827", "60828", "60829", "60830"
@@ -152,18 +153,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           let idValid = false;
           
           if (role === 'student' && roleData?.id) {
-            // Use optional chaining to safely access student_id
-            if (mockUser.profile?.student_id === roleData.id) {
+            // Check if the profile has student_id property before accessing it
+            if (mockUser.profile && 'student_id' in mockUser.profile && mockUser.profile.student_id === roleData.id) {
               idValid = true;
             }
           } else if (role === 'staff' && roleData?.id) {
-            // Use optional chaining to safely access staff_id
-            if (mockUser.profile?.staff_id === roleData.id) {
+            // Check if the profile has staff_id property before accessing it
+            if (mockUser.profile && 'staff_id' in mockUser.profile && mockUser.profile.staff_id === roleData.id) {
               idValid = true;
             }
           } else if (role === 'admin' && roleData?.id) {
-            // Use optional chaining to safely access admin_id
-            if (mockUser.profile?.admin_id === roleData.id) {
+            // Check if the profile has admin_id property before accessing it
+            if (mockUser.profile && 'admin_id' in mockUser.profile && mockUser.profile.admin_id === roleData.id) {
               idValid = true;
             }
           }
@@ -191,12 +192,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
       } else {
         // Real Supabase authentication
-        // For students, use the ID (register number) as the password
-        const finalPassword = roleData?.role === 'student' ? roleData.id : password;
+        console.log("Signing in with:", { email, password });
         
         const { data, error } = await supabase.auth.signInWithPassword({
           email,
-          password: finalPassword,
+          password,
         });
         
         if (error) throw error;
@@ -217,7 +217,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
               throw new Error(`This account is not registered as a ${roleData.role}`);
             }
             
-            // Validate ID based on role with safe property access
+            // Validate ID based on role with type checking
             if (roleData.role === 'student') {
               if (!profileData.student_id || profileData.student_id !== roleData.id) {
                 throw new Error('Invalid Student ID');
@@ -267,11 +267,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         // Simulate signup delay
         await new Promise(resolve => setTimeout(resolve, 1000));
         
-        // For student role, validate student ID
-        if (role === 'student') {
-          if (!validateStudentId(userData.id)) {
-            throw new Error("Invalid student ID");
-          }
+        // For student role, validate student ID using the validateRegisterNumber function
+        if (role === 'student' && !/^\d{13}$/.test(userData.id)) {
+          throw new Error("Invalid register number. Must be exactly 13 digits.");
         }
         
         // Create mock user with the selected role
@@ -307,12 +305,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         });
       } else {
         // Real Supabase signup
-        // For students, ensure password is the same as the ID (register number)
-        const finalPassword = role === 'student' ? userData.id : password;
+        console.log("Signing up with:", { email, password, role, userData });
         
         const { data, error } = await supabase.auth.signUp({
           email,
-          password: finalPassword,
+          password,
           options: {
             data: {
               full_name: userData.fullName,
@@ -370,7 +367,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   // Validate student ID
   const validateStudentId = (studentId: string): boolean => {
-    return VALID_STUDENT_IDS.includes(studentId);
+    // Change this to accept any 13-digit register number instead of using VALID_STUDENT_IDS
+    return /^\d{13}$/.test(studentId);
   };
 
   // Sign out function

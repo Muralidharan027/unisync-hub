@@ -61,6 +61,7 @@ export default function LoginForm({ role }: LoginFormProps) {
       // Call signIn with role-specific data
       // For students, use the register number as the password
       const finalPassword = role === 'student' ? id : password;
+      console.log("Login attempt:", { email, password: finalPassword, role, id });
       await signIn(email, finalPassword, { role, id });
     } catch (error: any) {
       console.error("Login error:", error);

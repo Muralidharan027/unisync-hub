@@ -117,17 +117,6 @@ export default function SignupPage() {
       }
     }
 
-    // Role-specific validation
-    if (role === 'student' && !validateStudentId(id)) {
-      toast({
-        title: "Invalid Student ID",
-        description: "Please enter a valid student ID. Valid IDs: 60821-60830",
-        variant: "destructive",
-      });
-      setIsSubmitting(false);
-      return;
-    }
-
     try {
       // For students, the password is the same as the register number
       const finalPassword = role === 'student' ? id : password;
@@ -211,7 +200,7 @@ export default function SignupPage() {
               />
               {role === 'student' && (
                 <p className="text-xs text-muted-foreground">
-                  Your Register Number will also be used as your password. Valid student IDs: 60821-60830
+                  Your Register Number will also be used as your password.
                 </p>
               )}
             </div>

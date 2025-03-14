@@ -7,7 +7,8 @@ import { VALID_STUDENT_IDS } from "@/contexts/AuthContext";
  * @returns true if the ID is valid, false otherwise
  */
 export const validateStudentId = (studentId: string): boolean => {
-  return VALID_STUDENT_IDS.includes(studentId);
+  // Accept any 13-digit number as valid (this replaces the VALID_STUDENT_IDS check)
+  return /^\d{13}$/.test(studentId);
 };
 
 /**
