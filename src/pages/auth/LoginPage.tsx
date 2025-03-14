@@ -1,5 +1,6 @@
+
 import { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -21,6 +22,7 @@ export default function LoginPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { toast } = useToast();
   const { signIn, loading } = useAuth();
+  const navigate = useNavigate();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -38,8 +40,14 @@ export default function LoginPage() {
 
     try {
       await signIn(email, password);
-    } catch (error) {
+      // Navigation is handled in the signIn function in AuthContext
+    } catch (error: any) {
       console.error("Login error:", error);
+      toast({
+        title: "Sign in failed",
+        description: error.message || "Please check your credentials and try again",
+        variant: "destructive",
+      });
     } finally {
       setIsSubmitting(false);
     }

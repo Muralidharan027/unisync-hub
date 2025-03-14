@@ -1,5 +1,6 @@
+
 import { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -22,6 +23,7 @@ export default function SignupPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { toast } = useToast();
   const { signUp, loading } = useAuth();
+  const navigate = useNavigate();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -53,7 +55,7 @@ export default function SignupPage() {
       localStorage.setItem("tempPassword", password);
       
       // Navigate to role selection
-      window.location.href = "/";
+      navigate("/");
       
       toast({
         title: "Account ready",

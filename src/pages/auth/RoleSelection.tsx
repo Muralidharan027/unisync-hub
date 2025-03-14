@@ -49,12 +49,7 @@ export default function RoleSelection() {
       setPassword(tempPassword);
     } else {
       // If no stored credentials, user needs to login first
-      const userEmail = localStorage.getItem("userEmail");
-      if (!userEmail) {
-        navigate('/auth/login');
-        return;
-      }
-      setEmail(userEmail || '');
+      navigate('/auth/login');
     }
   }, [navigate]);
 
@@ -89,16 +84,19 @@ export default function RoleSelection() {
     setIsLoading(true);
     
     try {
-      await signUp(email, password, selectedRole as any, studentId);
+      const role = selectedRole as 'student' | 'staff' | 'admin';
+      await signUp(email, password, role, studentId);
       
       // Clear temporary storage
       localStorage.removeItem("tempEmail");
       localStorage.removeItem("tempPassword");
-    } catch (error) {
+      
+      // Navigation is handled in the signUp function
+    } catch (error: any) {
       console.error("Error during role selection:", error);
       toast({
         title: "Registration failed",
-        description: "An error occurred during registration",
+        description: error.message || "An error occurred during registration",
         variant: "destructive",
       });
     } finally {
