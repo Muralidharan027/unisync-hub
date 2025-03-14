@@ -42,8 +42,8 @@ export default function LoginForm({ role }: LoginFormProps) {
     }
 
     try {
-      // Updated to match the signIn function signature (email, password)
-      await signIn(email, id);
+      // Pass the role to signIn function for role-specific authentication
+      await signIn(email, id, role);
     } catch (error) {
       console.error("Login error:", error);
     } finally {
