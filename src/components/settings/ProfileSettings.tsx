@@ -8,10 +8,10 @@ import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
 import { Switch } from "@/components/ui/switch";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
-import { Upload, User } from "lucide-react";
+import { Upload, User, Trash2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 
-interface ProfileSettingsProps {
+export interface ProfileSettingsProps {
   role?: 'student' | 'staff' | 'admin';
 }
 
@@ -25,6 +25,7 @@ export default function ProfileSettings({ role }: ProfileSettingsProps) {
   const [isSaving, setIsSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+  const [deleteAvatar, setDeleteAvatar] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -45,12 +46,29 @@ export default function ProfileSettings({ role }: ProfileSettingsProps) {
     setIsSaving(true);
 
     try {
+      // If delete avatar is checked, set avatar_url to null
+      const updatedAvatarUrl = deleteAvatar ? null : avatarUrl;
+      
+      // Delete the avatar file if needed
+      if (deleteAvatar && profile?.avatar_url) {
+        const filePathMatch = profile.avatar_url.match(/avatars\/([^?]+)/);
+        if (filePathMatch && filePathMatch[1]) {
+          const filePath = filePathMatch[1];
+          await supabase.storage.from('avatars').remove([filePath]);
+        }
+      }
+
       await updateProfile({
         full_name: fullName,
         phone,
         email,
-        avatar_url: avatarUrl
+        avatar_url: updatedAvatarUrl
       });
+      
+      if (deleteAvatar) {
+        setAvatarUrl(null);
+        setDeleteAvatar(false);
+      }
       
       toast({
         title: "Profile updated",
@@ -100,7 +118,8 @@ export default function ProfileSettings({ role }: ProfileSettingsProps) {
 
     const file = event.target.files[0];
     const fileExt = file.name.split('.').pop();
-    const filePath = `${profile?.id}/${Math.random().toString(36).substring(2)}.${fileExt}`;
+    const userId = profile?.id || 'anonymous';
+    const filePath = `${userId}/${Math.random().toString(36).substring(2)}.${fileExt}`;
 
     setUploading(true);
 
@@ -121,6 +140,7 @@ export default function ProfileSettings({ role }: ProfileSettingsProps) {
 
       if (data?.publicUrl) {
         setAvatarUrl(data.publicUrl);
+        setDeleteAvatar(false);
         
         // Update profile with new avatar URL
         await updateProfile({
@@ -167,20 +187,33 @@ export default function ProfileSettings({ role }: ProfileSettingsProps) {
                   ) : null}
                   <AvatarFallback className="text-lg">{getInitials()}</AvatarFallback>
                 </Avatar>
-                <Button 
-                  type="button" 
-                  size="icon" 
-                  variant="outline" 
-                  className="absolute bottom-0 right-0 rounded-full" 
-                  onClick={openFileSelector}
-                  disabled={uploading}
-                >
-                  {uploading ? (
-                    <div className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
-                  ) : (
-                    <Upload className="h-4 w-4" />
+                <div className="absolute bottom-0 right-0 flex space-x-1">
+                  <Button 
+                    type="button" 
+                    size="icon" 
+                    variant="outline" 
+                    className="rounded-full" 
+                    onClick={openFileSelector}
+                    disabled={uploading}
+                  >
+                    {uploading ? (
+                      <div className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
+                    ) : (
+                      <Upload className="h-4 w-4" />
+                    )}
+                  </Button>
+                  {avatarUrl && (
+                    <Button 
+                      type="button" 
+                      size="icon" 
+                      variant="outline" 
+                      className="rounded-full bg-red-100 hover:bg-red-200" 
+                      onClick={() => setDeleteAvatar(!deleteAvatar)}
+                    >
+                      <Trash2 className={`h-4 w-4 ${deleteAvatar ? 'text-red-600' : 'text-red-400'}`} />
+                    </Button>
                   )}
-                </Button>
+                </div>
                 <input 
                   type="file" 
                   ref={fileInputRef} 
@@ -192,6 +225,11 @@ export default function ProfileSettings({ role }: ProfileSettingsProps) {
               <p className="text-sm text-muted-foreground">
                 Upload a profile picture (recommended size: 256x256px)
               </p>
+              {deleteAvatar && (
+                <p className="text-sm text-red-500 font-medium">
+                  Your avatar will be deleted when you save changes
+                </p>
+              )}
             </div>
 
             <div className="space-y-2">

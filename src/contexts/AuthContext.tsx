@@ -1,3 +1,4 @@
+
 import { createContext, useContext, useState, useEffect, ReactNode } from "react";
 import { useNavigate } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
@@ -18,8 +19,8 @@ type Profile = {
   avatar_url?: string | null;
 };
 
-// Mock users storage
-const USERS_BY_EMAIL: Record<string, User & { profile: Profile }> = {};
+// Store users by email and role combination to allow same email with different roles
+const USERS_BY_EMAIL_ROLE: Record<string, User & { profile: Profile }> = {};
 
 // Valid student IDs
 export const VALID_STUDENT_IDS = [
@@ -41,6 +42,11 @@ interface AuthContextType {
 // Create context
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+// Helper to create a unique key for user storage based on email and role
+const getUserKey = (email: string, role: UserRole): string => {
+  return `${email}:${role}`;
+};
+
 // Provider component
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
@@ -58,22 +64,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const savedRole = localStorage.getItem("userRole") as UserRole | null;
         
         if (savedEmail && savedRole) {
-          // Look up the user by email
-          const savedUser = USERS_BY_EMAIL[savedEmail];
+          const userKey = getUserKey(savedEmail, savedRole);
           
-          // If user exists and role matches
-          if (savedUser && savedUser.role === savedRole) {
+          // Look up the user by email and role
+          const savedUser = USERS_BY_EMAIL_ROLE[userKey];
+          
+          // If user exists with that email and role
+          if (savedUser) {
             setUser(savedUser);
             setProfile(savedUser.profile);
             
             // Load saved profile data from localStorage if exists
-            const savedProfile = localStorage.getItem(`profile_${savedEmail}`);
+            const savedProfile = localStorage.getItem(`profile_${userKey}`);
             if (savedProfile) {
               const parsedProfile = JSON.parse(savedProfile);
               setProfile(prev => prev ? { ...prev, ...parsedProfile } : parsedProfile);
             }
           } else {
-            // Email and role don't match, clear session
+            // Email and role combo doesn't exist, clear session
             localStorage.removeItem("userEmail");
             localStorage.removeItem("userRole");
           }
@@ -100,27 +108,43 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         throw new Error("Email and password are required");
       }
       
-      // If a role is specified, check if the user exists with that role
+      // If a role is specified, we need to check if the user exists with that role
       if (role) {
-        const existingUser = USERS_BY_EMAIL[email];
+        const userKey = getUserKey(email, role);
+        const existingUser = USERS_BY_EMAIL_ROLE[userKey];
         
-        // If user exists but with a different role
-        if (existingUser && existingUser.role !== role) {
-          throw new Error(`This email is registered as a ${existingUser.role}. Please use a different email for ${role} role.`);
-        }
-        
-        // If user doesn't exist, create a new one with that role
+        // If user doesn't exist with that email and role, create one
         if (!existingUser) {
-          // Create a mock user for this role
-          createDefaultUserForRole(email, role);
+          // Check if we should automatically create this user or show error
+          if (Object.keys(USERS_BY_EMAIL_ROLE).some(key => key.startsWith(`${email}:`))) {
+            // User exists with this email but with a different role, auto-create it
+            createDefaultUserForRole(email, role);
+          } else {
+            throw new Error("Email not recognized for this role. Please sign up first.");
+          }
+        }
+      } else {
+        // If no role specified, check if we have any user with this email
+        const usersWithEmail = Object.keys(USERS_BY_EMAIL_ROLE)
+          .filter(key => key.startsWith(`${email}:`))
+          .map(key => USERS_BY_EMAIL_ROLE[key]);
+        
+        if (usersWithEmail.length === 0) {
+          throw new Error("Email not recognized. Please sign up first.");
+        } else if (usersWithEmail.length > 1) {
+          // Multiple roles found for this email, we need the user to specify role
+          throw new Error("This email is registered with multiple roles. Please specify which role you want to sign in as.");
+        } else {
+          // Only one role found, use that one
+          role = usersWithEmail[0].role;
         }
       }
       
-      // Get the user from our storage
-      const user = USERS_BY_EMAIL[email];
+      const userKey = getUserKey(email, role!);
+      const user = USERS_BY_EMAIL_ROLE[userKey];
       
       if (!user) {
-        throw new Error("Email not recognized. Please sign up first.");
+        throw new Error("Email not recognized for this role. Please sign up first.");
       }
       
       // Store email and role for the session
@@ -132,7 +156,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setProfile(user.profile);
       
       // Load saved profile data from localStorage if exists
-      const savedProfile = localStorage.getItem(`profile_${email}`);
+      const savedProfile = localStorage.getItem(`profile_${userKey}`);
       if (savedProfile) {
         const parsedProfile = JSON.parse(savedProfile);
         setProfile(prev => prev ? { ...prev, ...parsedProfile } : parsedProfile);
@@ -161,6 +185,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // Helper to create default users for roles
   const createDefaultUserForRole = (email: string, role: UserRole) => {
     const userId = `${role}-${Date.now()}`;
+    const userKey = getUserKey(email, role);
     const user = {
       id: userId,
       email,
@@ -185,7 +210,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
     
     // Store in our users object
-    USERS_BY_EMAIL[email] = user;
+    USERS_BY_EMAIL_ROLE[userKey] = user;
     
     return user;
   };
@@ -195,10 +220,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       setLoading(true);
       
-      // Check if email already exists with a different role
-      const existingUser = USERS_BY_EMAIL[email];
-      if (existingUser) {
-        throw new Error(`This email is already registered as a ${existingUser.role}. Please use a different email for ${role} role.`);
+      const userKey = getUserKey(email, role);
+      
+      // Check if email already exists with this role
+      if (USERS_BY_EMAIL_ROLE[userKey]) {
+        throw new Error(`This email is already registered as a ${role}. Please use a different email or sign in.`);
       }
       
       // For student role, validate student ID
@@ -264,12 +290,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setProfile(newProfile);
       
       // Also update in our storage
-      if (USERS_BY_EMAIL[user.email]) {
-        USERS_BY_EMAIL[user.email].profile = newProfile;
+      const userKey = getUserKey(user.email, user.role);
+      if (USERS_BY_EMAIL_ROLE[userKey]) {
+        USERS_BY_EMAIL_ROLE[userKey].profile = newProfile;
       }
       
       // Save to localStorage for persistence
-      localStorage.setItem(`profile_${user.email}`, JSON.stringify(newProfile));
+      localStorage.setItem(`profile_${userKey}`, JSON.stringify(newProfile));
       
       toast({
         title: "Profile updated",
