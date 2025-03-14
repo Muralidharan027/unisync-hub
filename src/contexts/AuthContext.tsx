@@ -1,3 +1,4 @@
+
 import { createContext, useContext, useState, useEffect, ReactNode } from "react";
 import { useNavigate } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
@@ -153,18 +154,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           // Validate role-specific ID
           let idValid = false;
           
-          if (role === 'student' && roleData?.id && 
-              mockUser.profile.student_id && 
-              mockUser.profile.student_id === roleData.id) {
-            idValid = true;
-          } else if (role === 'staff' && roleData?.id && 
-                    mockUser.profile.staff_id &&
-                    mockUser.profile.staff_id === roleData.id) {
-            idValid = true;
-          } else if (role === 'admin' && roleData?.id && 
-                    mockUser.profile.admin_id &&
-                    mockUser.profile.admin_id === roleData.id) {
-            idValid = true;
+          if (role === 'student' && roleData?.id) {
+            // Safe check for student_id property
+            const studentId = mockUser.profile.student_id;
+            if (studentId && studentId === roleData.id) {
+              idValid = true;
+            }
+          } else if (role === 'staff' && roleData?.id) {
+            // Safe check for staff_id property
+            const staffId = mockUser.profile.staff_id;
+            if (staffId && staffId === roleData.id) {
+              idValid = true;
+            }
+          } else if (role === 'admin' && roleData?.id) {
+            // Safe check for admin_id property
+            const adminId = mockUser.profile.admin_id;
+            if (adminId && adminId === roleData.id) {
+              idValid = true;
+            }
           }
           
           if (!idValid) {
@@ -213,17 +220,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
               throw new Error(`This account is not registered as a ${roleData.role}`);
             }
             
-            // Type guard for role-specific ID properties
-            // Validate ID based on role
-            if (roleData.role === 'student' && 
-                profileData.student_id !== roleData.id) {
-              throw new Error('Invalid Student ID');
-            } else if (roleData.role === 'staff' && 
-                      profileData.staff_id !== roleData.id) {
-              throw new Error('Invalid Staff ID');
-            } else if (roleData.role === 'admin' && 
-                      profileData.admin_id !== roleData.id) {
-              throw new Error('Invalid Admin ID');
+            // Validate ID based on role with safe property access
+            if (roleData.role === 'student') {
+              const studentId = profileData.student_id;
+              if (!studentId || studentId !== roleData.id) {
+                throw new Error('Invalid Student ID');
+              }
+            } else if (roleData.role === 'staff') {
+              const staffId = profileData.staff_id;
+              if (!staffId || staffId !== roleData.id) {
+                throw new Error('Invalid Staff ID');
+              }
+            } else if (roleData.role === 'admin') {
+              const adminId = profileData.admin_id;
+              if (!adminId || adminId !== roleData.id) {
+                throw new Error('Invalid Admin ID');
+              }
             }
           }
           
@@ -272,6 +284,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const mockUser = { ...MOCK_USERS[role] };
         mockUser.email = email;
         
+        // Update the appropriate ID field based on role
         if (role === 'student') {
           mockUser.profile.student_id = userData.id;
         } else if (role === 'staff') {
@@ -323,6 +336,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             role,
           };
           
+          // Set the appropriate ID field based on role
           if (role === 'student') {
             newProfile.student_id = userData.id;
           } else if (role === 'staff') {
