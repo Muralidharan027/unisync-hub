@@ -9,17 +9,34 @@ import { Badge } from "@/components/ui/badge";
 import { LeaveRequest } from "@/components/leave/LeaveRequestCard";
 import { format } from "date-fns";
 import { getAnnouncements } from "@/store/announcements";
+import { getLeaveRequests } from "@/store/leaveRequests";
+import { useAuth } from "@/contexts/AuthContext";
 
 export default function StaffDashboard() {
+  const { profile } = useAuth();
   const [stats, setStats] = useState([
     { title: "Pending Leave Requests", value: "0", icon: <FileClock className="h-4 w-4" /> },
     { title: "Pending OD Requests", value: "0", icon: <FileText className="h-4 w-4" /> },
-    { title: "Total Students", value: "45", icon: <Users className="h-4 w-4" /> }, // Static value
+    { title: "Total Students", value: "0", icon: <Users className="h-4 w-4" /> },
     { title: "Total Announcements", value: "0", icon: <Bell className="h-4 w-4" /> },
   ]);
 
   const [pendingRequests, setPendingRequests] = useState<LeaveRequest[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  
+  // Function to count unique student emails
+  const countUniqueStudents = () => {
+    const requests = getLeaveRequests();
+    const uniqueStudentEmails = new Set();
+    
+    requests.forEach(req => {
+      if (req.studentEmail) {
+        uniqueStudentEmails.add(req.studentEmail);
+      }
+    });
+    
+    return uniqueStudentEmails.size > 0 ? uniqueStudentEmails.size : 10; // Fallback to 10 if no real data
+  };
   
   // Load leave requests
   useEffect(() => {
@@ -28,31 +45,31 @@ export default function StaffDashboard() {
     // In a real app, we would fetch from Supabase
     // For now, we'll use the global store with a timeout to simulate loading
     setTimeout(() => {
-      if (window.globalLeaveRequests) {
-        const pendingReqs = window.globalLeaveRequests.filter(
-          req => req.status === "pending"
-        ).slice(0, 5);
-        
-        setPendingRequests(pendingReqs);
-        
-        // Update stats
-        const pendingLeave = window.globalLeaveRequests.filter(
-          req => req.status === "pending" && req.type === "leave"
-        ).length;
-        
-        const pendingOD = window.globalLeaveRequests.filter(
-          req => req.status === "pending" && req.type === "od"
-        ).length;
-        
-        const totalAnnouncements = getAnnouncements().length;
-        
-        setStats([
-          { title: "Pending Leave Requests", value: pendingLeave.toString(), icon: <FileClock className="h-4 w-4" /> },
-          { title: "Pending OD Requests", value: pendingOD.toString(), icon: <FileText className="h-4 w-4" /> },
-          { title: "Total Students", value: "45", icon: <Users className="h-4 w-4" /> }, // Static value
-          { title: "Total Announcements", value: totalAnnouncements.toString(), icon: <Bell className="h-4 w-4" /> }
-        ]);
-      }
+      const leaveRequests = getLeaveRequests();
+      const pendingReqs = leaveRequests.filter(
+        req => req.status === "pending"
+      ).slice(0, 5);
+      
+      setPendingRequests(pendingReqs);
+      
+      // Update stats
+      const pendingLeave = leaveRequests.filter(
+        req => req.status === "pending" && req.type === "leave"
+      ).length;
+      
+      const pendingOD = leaveRequests.filter(
+        req => req.status === "pending" && req.type === "od"
+      ).length;
+      
+      const totalAnnouncements = getAnnouncements().length;
+      const totalStudents = countUniqueStudents();
+      
+      setStats([
+        { title: "Pending Leave Requests", value: pendingLeave.toString(), icon: <FileClock className="h-4 w-4" /> },
+        { title: "Pending OD Requests", value: pendingOD.toString(), icon: <FileText className="h-4 w-4" /> },
+        { title: "Total Students", value: totalStudents.toString(), icon: <Users className="h-4 w-4" /> },
+        { title: "Total Announcements", value: totalAnnouncements.toString(), icon: <Bell className="h-4 w-4" /> }
+      ]);
       
       setIsLoading(false);
     }, 800);
@@ -61,31 +78,31 @@ export default function StaffDashboard() {
   // Subscribe to changes in the global leave requests
   useEffect(() => {
     const checkForUpdates = () => {
-      if (window.globalLeaveRequests) {
-        const pendingReqs = window.globalLeaveRequests.filter(
-          req => req.status === "pending"
-        ).slice(0, 5);
-        
-        setPendingRequests(pendingReqs);
-        
-        // Update stats
-        const pendingLeave = window.globalLeaveRequests.filter(
-          req => req.status === "pending" && req.type === "leave"
-        ).length;
-        
-        const pendingOD = window.globalLeaveRequests.filter(
-          req => req.status === "pending" && req.type === "od"
-        ).length;
-        
-        const totalAnnouncements = getAnnouncements().length;
-        
-        setStats(prev => [
-          { ...prev[0], value: pendingLeave.toString() },
-          { ...prev[1], value: pendingOD.toString() },
-          { ...prev[2] }, // Static value
-          { ...prev[3], value: totalAnnouncements.toString() }
-        ]);
-      }
+      const leaveRequests = getLeaveRequests();
+      const pendingReqs = leaveRequests.filter(
+        req => req.status === "pending"
+      ).slice(0, 5);
+      
+      setPendingRequests(pendingReqs);
+      
+      // Update stats
+      const pendingLeave = leaveRequests.filter(
+        req => req.status === "pending" && req.type === "leave"
+      ).length;
+      
+      const pendingOD = leaveRequests.filter(
+        req => req.status === "pending" && req.type === "od"
+      ).length;
+      
+      const totalAnnouncements = getAnnouncements().length;
+      const totalStudents = countUniqueStudents();
+      
+      setStats(prev => [
+        { ...prev[0], value: pendingLeave.toString() },
+        { ...prev[1], value: pendingOD.toString() },
+        { ...prev[2], value: totalStudents.toString() },
+        { ...prev[3], value: totalAnnouncements.toString() }
+      ]);
     };
     
     // Check for updates every 5 seconds

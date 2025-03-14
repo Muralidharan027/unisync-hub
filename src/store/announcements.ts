@@ -1,6 +1,5 @@
 
 import { Announcement } from "@/components/announcements/AnnouncementCard";
-import { LeaveRequest } from "@/components/leave/LeaveRequestCard";
 
 // Load announcements from localStorage if available
 const loadAnnouncements = (): Announcement[] => {
@@ -65,6 +64,5 @@ const saveAnnouncements = (): void => {
 declare global {
   interface Window {
     globalAnnouncements: Announcement[];
-    globalLeaveRequests: LeaveRequest[];
   }
 }
