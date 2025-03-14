@@ -1,107 +1,47 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { Laptop, Smartphone, LogOut } from 'lucide-react';
-import { useToast } from "@/hooks/use-toast";
-import { useAuth } from "@/contexts/AuthContext";
 
 export default function SecuritySettings() {
   const [twoFactorEnabled, setTwoFactorEnabled] = useState(false);
-  const [sessions, setSessions] = useState<any[]>([]);
-  const [loginHistory, setLoginHistory] = useState<any[]>([]);
-  const { toast } = useToast();
-  const { user } = useAuth();
   
-  useEffect(() => {
-    // Get sessions from localStorage
-    const loadSessions = () => {
-      if (!user) return;
-      
-      const savedSessions = localStorage.getItem(`sessions_${user.email}`);
-      if (savedSessions) {
-        setSessions(JSON.parse(savedSessions));
-      } else {
-        // Create default current session
-        const currentSession = {
-          id: 1,
-          device: `${getBrowser()} on ${getOS()}`,
-          location: 'Current Location',
-          lastActive: 'Active now',
-          icon: <Laptop className="h-4 w-4" />,
-          isCurrent: true,
-        };
-        
-        setSessions([currentSession]);
-        localStorage.setItem(`sessions_${user.email}`, JSON.stringify([currentSession]));
-      }
-      
-      // Get login history - create initial history if none exists
-      const savedHistory = localStorage.getItem(`loginHistory_${user.email}`);
-      if (savedHistory) {
-        setLoginHistory(JSON.parse(savedHistory));
-      } else {
-        const newHistory = [
-          { 
-            date: new Date().toLocaleString(), 
-            device: `${getBrowser()} on ${getOS()}`, 
-            location: 'Current Location', 
-            status: 'Success' 
-          }
-        ];
-        setLoginHistory(newHistory);
-        localStorage.setItem(`loginHistory_${user.email}`, JSON.stringify(newHistory));
-      }
-    };
-    
-    loadSessions();
-  }, [user]);
-
-  const getBrowser = () => {
-    const userAgent = navigator.userAgent;
-    if (userAgent.indexOf("Chrome") > -1) return "Chrome";
-    if (userAgent.indexOf("Safari") > -1) return "Safari";
-    if (userAgent.indexOf("Firefox") > -1) return "Firefox";
-    if (userAgent.indexOf("MSIE") > -1 || userAgent.indexOf("Trident") > -1) return "Internet Explorer";
-    if (userAgent.indexOf("Edge") > -1) return "Edge";
-    return "Unknown Browser";
-  };
-  
-  const getOS = () => {
-    const userAgent = navigator.userAgent;
-    if (userAgent.indexOf("Windows") > -1) return "Windows";
-    if (userAgent.indexOf("Mac") > -1) return "macOS";
-    if (userAgent.indexOf("Linux") > -1) return "Linux";
-    if (userAgent.indexOf("Android") > -1) return "Android";
-    if (userAgent.indexOf("iOS") > -1 || userAgent.indexOf("iPhone") > -1 || userAgent.indexOf("iPad") > -1) return "iOS";
-    return "Unknown OS";
-  };
+  // Mock active sessions data
+  const activeSessions = [
+    {
+      id: 1,
+      device: 'Chrome on Windows',
+      location: 'Chennai, India',
+      lastActive: 'Active now',
+      icon: <Laptop className="h-4 w-4" />,
+      isCurrent: true,
+    },
+    {
+      id: 2,
+      device: 'Mobile App on Android',
+      location: 'Chennai, India',
+      lastActive: '3 hours ago',
+      icon: <Smartphone className="h-4 w-4" />,
+      isCurrent: false,
+    },
+  ];
 
   const handleLogout = (sessionId: number) => {
-    if (!user) return;
-    
-    // Filter out the session
-    const updatedSessions = sessions.filter(session => session.id !== sessionId);
-    setSessions(updatedSessions);
-    localStorage.setItem(`sessions_${user.email}`, JSON.stringify(updatedSessions));
-    
-    toast({
-      title: "Session logged out",
-      description: "The device has been logged out successfully."
-    });
+    // In a real app, you would call an API to log out the session
+    console.log(`Logging out session ${sessionId}`);
   };
 
   const handleToggleTwoFactor = (checked: boolean) => {
     setTwoFactorEnabled(checked);
-    
-    toast({
-      title: checked ? "Two-Factor Authentication Enabled" : "Two-Factor Authentication Disabled",
-      description: checked 
-        ? "Your account is now more secure with 2FA." 
-        : "Two-factor authentication has been disabled."
-    });
+    // In a real app, you would initialize the 2FA setup flow
+    if (checked) {
+      console.log('Initializing 2FA setup');
+    } else {
+      console.log('Disabling 2FA');
+    }
   };
 
   return (
@@ -145,7 +85,7 @@ export default function SecuritySettings() {
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          {sessions.map((session) => (
+          {activeSessions.map((session) => (
             <div key={session.id} className="flex items-center justify-between space-x-4 rounded-md border p-4">
               <div className="flex items-start space-x-4">
                 <div className="rounded-full bg-secondary p-2">
@@ -189,7 +129,11 @@ export default function SecuritySettings() {
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
-            {loginHistory.map((log, index) => (
+            {[
+              { date: 'Today, 10:30 AM', device: 'Chrome on Windows', location: 'Chennai, India', status: 'Success' },
+              { date: 'Yesterday, 8:15 PM', device: 'Mobile App on Android', location: 'Chennai, India', status: 'Success' },
+              { date: '2 days ago, 3:45 PM', device: 'Firefox on Windows', location: 'Coimbatore, India', status: 'Success' },
+            ].map((log, index) => (
               <div key={index} className="flex justify-between border-b pb-4 last:border-0 last:pb-0">
                 <div>
                   <p className="text-sm font-medium">{log.date}</p>

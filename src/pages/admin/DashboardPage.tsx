@@ -11,7 +11,6 @@ import { LeaveRequest } from "@/components/leave/LeaveRequestCard";
 import { getAnnouncements } from "@/store/announcements";
 import { getLeaveRequests } from "@/store/leaveRequests";
 import { useAuth } from "@/contexts/AuthContext";
-import { Announcement } from "@/components/announcements/AnnouncementCard";
 
 export default function AdminDashboard() {
   const { profile } = useAuth();
@@ -32,8 +31,8 @@ export default function AdminDashboard() {
     const uniqueStudentEmails = new Set();
     
     requests.forEach(req => {
-      if ((req as any).studentEmail) {
-        uniqueStudentEmails.add((req as any).studentEmail);
+      if (req.studentEmail) {
+        uniqueStudentEmails.add(req.studentEmail);
       }
     });
     
@@ -46,8 +45,8 @@ export default function AdminDashboard() {
     const uniqueStaffEmails = new Set();
     
     announcements.forEach(ann => {
-      if ((ann as any).authorEmail && (ann as any).authorEmail !== profile?.email) {
-        uniqueStaffEmails.add((ann as any).authorEmail);
+      if (ann.authorEmail && ann.authorEmail !== profile?.email) {
+        uniqueStaffEmails.add(ann.authorEmail);
       }
     });
     

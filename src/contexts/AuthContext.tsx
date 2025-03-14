@@ -3,9 +3,65 @@ import { useNavigate } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 
+// Mock user data for different roles with email mappings
+const USER_ROLE_MAPPINGS = {
+  'student@example.com': 'student',
+  'staff@example.com': 'staff',
+  'admin@example.com': 'admin'
+};
+
+// Mock user data for different roles
+const MOCK_USERS = {
+  student: {
+    id: "student-123",
+    email: "student@example.com",
+    profile: {
+      id: "student-123",
+      role: "student" as UserRole,
+      full_name: "Student User",
+      email: "student@example.com",
+      student_id: "STU001",
+      phone: null,
+      avatar_url: null,
+    }
+  },
+  staff: {
+    id: "staff-123",
+    email: "staff@example.com",
+    profile: {
+      id: "staff-123",
+      role: "staff" as UserRole,
+      full_name: "Staff User",
+      email: "staff@example.com",
+      staff_id: "STA001",
+      phone: null,
+      avatar_url: null,
+    }
+  },
+  admin: {
+    id: "admin-123",
+    email: "admin@example.com",
+    profile: {
+      id: "admin-123",
+      role: "admin" as UserRole,
+      full_name: "Admin User",
+      email: "admin@example.com",
+      admin_id: "ADM001",
+      phone: null,
+      avatar_url: null,
+    }
+  }
+};
+
+// Valid student IDs
+export const VALID_STUDENT_IDS = [
+  "60821", "60822", "60823", "60824", "60825", 
+  "60826", "60827", "60828", "60829", "60830"
+];
+
 // Types
 type UserRole = "student" | "staff" | "admin";
-type User = { id: string; email: string; role: UserRole };
+type User = { id: string; email: string; };
 type Profile = {
   id: string;
   role: UserRole;
@@ -18,20 +74,11 @@ type Profile = {
   avatar_url?: string | null;
 };
 
-// Mock users storage
-const USERS_BY_EMAIL: Record<string, User & { profile: Profile }> = {};
-
-// Valid student IDs
-export const VALID_STUDENT_IDS = [
-  "60821", "60822", "60823", "60824", "60825", 
-  "60826", "60827", "60828", "60829", "60830"
-];
-
 interface AuthContextType {
   user: User | null;
   profile: Profile | null;
   loading: boolean;
-  signIn: (email: string, password: string, role?: UserRole) => Promise<void>;
+  signIn: (email: string, password: string) => Promise<void>;
   signUp: (email: string, password: string, role: UserRole, studentId?: string) => Promise<void>;
   signOut: () => Promise<void>;
   validateStudentId: (studentId: string) => boolean;
@@ -57,14 +104,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const savedEmail = localStorage.getItem("userEmail");
         const savedRole = localStorage.getItem("userRole") as UserRole | null;
         
-        if (savedEmail && savedRole) {
-          // Look up the user by email
-          const savedUser = USERS_BY_EMAIL[savedEmail];
+        if (savedEmail && savedRole && MOCK_USERS[savedRole]) {
+          // Verify the email matches the correct role
+          const expectedRole = USER_ROLE_MAPPINGS[savedEmail as keyof typeof USER_ROLE_MAPPINGS];
           
-          // If user exists and role matches
-          if (savedUser && savedUser.role === savedRole) {
-            setUser(savedUser);
-            setProfile(savedUser.profile);
+          if (expectedRole && expectedRole === savedRole) {
+            setUser(MOCK_USERS[savedRole]);
+            setProfile(MOCK_USERS[savedRole].profile);
             
             // Load saved profile data from localStorage if exists
             const savedProfile = localStorage.getItem(`profile_${savedEmail}`);
@@ -89,47 +135,33 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   // Sign in function
-  const signIn = async (email: string, password: string, role?: UserRole) => {
+  const signIn = async (email: string, password: string) => {
     try {
       setLoading(true);
       
       // Simulate authentication delay
       await new Promise(resolve => setTimeout(resolve, 1000));
       
+      // In a real app, we would call supabase.auth.signInWithPassword here
+      // For now, we'll simulate successful login if the password is not empty
       if (!email || !password) {
         throw new Error("Email and password are required");
       }
       
-      // If a role is specified, check if the user exists with that role
-      if (role) {
-        const existingUser = USERS_BY_EMAIL[email];
-        
-        // If user exists but with a different role
-        if (existingUser && existingUser.role !== role) {
-          throw new Error(`This email is registered as a ${existingUser.role}. Please use a different email for ${role} role.`);
-        }
-        
-        // If user doesn't exist, create a new one with that role
-        if (!existingUser) {
-          // Create a mock user for this role
-          createDefaultUserForRole(email, role);
-        }
-      }
+      // Check if this email has a predefined role
+      const expectedRole = USER_ROLE_MAPPINGS[email as keyof typeof USER_ROLE_MAPPINGS];
       
-      // Get the user from our storage
-      const user = USERS_BY_EMAIL[email];
-      
-      if (!user) {
+      if (!expectedRole) {
         throw new Error("Email not recognized. Please sign up first.");
       }
       
-      // Store email and role for the session
+      // Store email and role for the role selection page
       localStorage.setItem("userEmail", email);
-      localStorage.setItem("userRole", user.role);
+      localStorage.setItem("userRole", expectedRole);
       
-      // Set user and profile in state
-      setUser(user);
-      setProfile(user.profile);
+      // Set user and profile based on role
+      setUser(MOCK_USERS[expectedRole]);
+      setProfile(MOCK_USERS[expectedRole].profile);
       
       // Load saved profile data from localStorage if exists
       const savedProfile = localStorage.getItem(`profile_${email}`);
@@ -139,11 +171,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
       
       // Navigate to appropriate dashboard based on role
-      navigate(`/${user.role}/dashboard`);
+      navigate(`/${expectedRole}/dashboard`);
       
       toast({
         title: "Sign in successful",
-        description: `Welcome back! You are logged in as ${user.role}.`,
+        description: `Welcome back! You are logged in as ${expectedRole}.`,
       });
     } catch (error: any) {
       console.error("Sign in error:", error);
@@ -152,42 +184,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         description: error.message || "Please check your credentials and try again.",
         variant: "destructive",
       });
-      throw error; // Re-throw to handle in UI
     } finally {
       setLoading(false);
     }
-  };
-
-  // Helper to create default users for roles
-  const createDefaultUserForRole = (email: string, role: UserRole) => {
-    const userId = `${role}-${Date.now()}`;
-    const user = {
-      id: userId,
-      email,
-      role,
-      profile: {
-        id: userId,
-        role,
-        full_name: `${role.charAt(0).toUpperCase() + role.slice(1)} User`,
-        email,
-        phone: null,
-        avatar_url: null,
-      }
-    };
-    
-    // Add role-specific IDs
-    if (role === 'student') {
-      user.profile.student_id = 'STU' + Math.floor(Math.random() * 1000).toString().padStart(3, '0');
-    } else if (role === 'staff') {
-      user.profile.staff_id = 'STA' + Math.floor(Math.random() * 1000).toString().padStart(3, '0');
-    } else if (role === 'admin') {
-      user.profile.admin_id = 'ADM' + Math.floor(Math.random() * 1000).toString().padStart(3, '0');
-    }
-    
-    // Store in our users object
-    USERS_BY_EMAIL[email] = user;
-    
-    return user;
   };
 
   // Sign up function
@@ -196,9 +195,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setLoading(true);
       
       // Check if email already exists with a different role
-      const existingUser = USERS_BY_EMAIL[email];
-      if (existingUser) {
-        throw new Error(`This email is already registered as a ${existingUser.role}. Please use a different email for ${role} role.`);
+      const existingRole = USER_ROLE_MAPPINGS[email as keyof typeof USER_ROLE_MAPPINGS];
+      if (existingRole && existingRole !== role) {
+        throw new Error(`This email is already registered as a ${existingRole}. Please use a different email for ${role} role.`);
       }
       
       // For student role, validate student ID
@@ -211,28 +210,36 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // Simulate signup delay
       await new Promise(resolve => setTimeout(resolve, 1000));
       
-      // Create user for the selected role
-      const user = createDefaultUserForRole(email, role);
-      
-      // If student role and ID provided, update the student_id
-      if (role === 'student' && studentId) {
-        user.profile.student_id = studentId;
+      // Create mock user with the selected role
+      if (MOCK_USERS[role]) {
+        const mockUser = { ...MOCK_USERS[role] };
+        mockUser.email = email;
+        mockUser.profile.email = email;
+        
+        if (role === 'student' && studentId) {
+          mockUser.profile.student_id = studentId;
+        }
+        
+        setUser(mockUser);
+        setProfile(mockUser.profile);
+        
+        // Save role and email to localStorage
+        localStorage.setItem("userRole", role);
+        localStorage.setItem("userEmail", email);
+        
+        // Also update USER_ROLE_MAPPINGS (would be a database update in real app)
+        (USER_ROLE_MAPPINGS as any)[email] = role;
+        
+        // Navigate to dashboard
+        navigate(`/${role}/dashboard`);
+        
+        toast({
+          title: "Account created",
+          description: `Welcome to UniSync, you are registered as a ${role}!`,
+        });
+      } else {
+        throw new Error("Invalid role");
       }
-      
-      setUser(user);
-      setProfile(user.profile);
-      
-      // Save role and email to localStorage
-      localStorage.setItem("userRole", role);
-      localStorage.setItem("userEmail", email);
-      
-      // Navigate to dashboard
-      navigate(`/${role}/dashboard`);
-      
-      toast({
-        title: "Account created",
-        description: `Welcome to UniSync, you are registered as a ${role}!`,
-      });
     } catch (error: any) {
       console.error("Sign up error:", error);
       toast({
@@ -262,11 +269,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // Update profile
       const newProfile = { ...profile, ...updatedProfile };
       setProfile(newProfile);
-      
-      // Also update in our storage
-      if (USERS_BY_EMAIL[user.email]) {
-        USERS_BY_EMAIL[user.email].profile = newProfile;
-      }
       
       // Save to localStorage for persistence
       localStorage.setItem(`profile_${user.email}`, JSON.stringify(newProfile));
