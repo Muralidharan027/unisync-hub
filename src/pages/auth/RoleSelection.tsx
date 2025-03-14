@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from "@/components/ui/button";
@@ -6,7 +7,7 @@ import { GraduationCap, UserCog, Users, ArrowRight } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from '@/hooks/use-toast';
-import { useAuth } from '@/hooks/useAuth';
+import { useAuth } from '@/contexts/AuthContext';
 
 const roles = [
   {
@@ -49,7 +50,12 @@ export default function RoleSelection() {
       setPassword(tempPassword);
     } else {
       // If no stored credentials, user needs to login first
-      navigate('/auth/login');
+      const userEmail = localStorage.getItem("userEmail");
+      if (!userEmail) {
+        navigate('/auth/login');
+        return;
+      }
+      setEmail(userEmail || '');
     }
   }, [navigate]);
 
@@ -84,19 +90,16 @@ export default function RoleSelection() {
     setIsLoading(true);
     
     try {
-      const role = selectedRole as 'student' | 'staff' | 'admin';
-      await signUp(email, password, role, studentId);
+      await signUp(email, password, selectedRole as any, studentId);
       
       // Clear temporary storage
       localStorage.removeItem("tempEmail");
       localStorage.removeItem("tempPassword");
-      
-      // Navigation is handled in the signUp function
-    } catch (error: any) {
+    } catch (error) {
       console.error("Error during role selection:", error);
       toast({
         title: "Registration failed",
-        description: error.message || "An error occurred during registration",
+        description: "An error occurred during registration",
         variant: "destructive",
       });
     } finally {

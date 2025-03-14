@@ -1,3 +1,4 @@
+
 import { Bell, Calendar, FileClock, Users } from "lucide-react";
 import DashboardLayout from "@/layouts/DashboardLayout";
 import { Button } from "@/components/ui/button";
@@ -9,7 +10,7 @@ import { format } from "date-fns";
 import { LeaveRequest } from "@/components/leave/LeaveRequestCard";
 import { getAnnouncements } from "@/store/announcements";
 import { getLeaveRequests } from "@/store/leaveRequests";
-import { useAuth } from "@/hooks/useAuth";
+import { useAuth } from "@/contexts/AuthContext";
 import { Announcement } from "@/components/announcements/AnnouncementCard";
 
 export default function AdminDashboard() {

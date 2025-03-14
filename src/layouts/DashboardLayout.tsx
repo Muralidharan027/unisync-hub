@@ -1,3 +1,4 @@
+
 import { ReactNode } from 'react';
 import { Bell, Home, LogOut, Settings, User } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
@@ -9,7 +10,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { useAuth } from "@/hooks/useAuth";
+import { useAuth } from "@/contexts/AuthContext";
 import ProtectedRoute from "@/components/auth/ProtectedRoute";
 import { Badge } from "@/components/ui/badge";
 

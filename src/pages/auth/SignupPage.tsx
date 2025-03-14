@@ -1,6 +1,6 @@
 
 import { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -13,7 +13,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from '@/hooks/use-toast';
-import { useAuth } from '@/hooks/useAuth';
+import { useAuth } from '@/contexts/AuthContext';
 import { Loader2, UserPlus } from 'lucide-react';
 
 export default function SignupPage() {
@@ -23,7 +23,6 @@ export default function SignupPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { toast } = useToast();
   const { signUp, loading } = useAuth();
-  const navigate = useNavigate();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -55,7 +54,7 @@ export default function SignupPage() {
       localStorage.setItem("tempPassword", password);
       
       // Navigate to role selection
-      navigate("/");
+      window.location.href = "/";
       
       toast({
         title: "Account ready",

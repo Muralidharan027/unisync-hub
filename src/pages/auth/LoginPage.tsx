@@ -1,6 +1,6 @@
 
 import { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -13,7 +13,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from '@/hooks/use-toast';
-import { useAuth } from '@/hooks/useAuth';
+import { useAuth } from '@/contexts/AuthContext';
 import { Loader2, LogIn } from 'lucide-react';
 
 export default function LoginPage() {
@@ -22,7 +22,6 @@ export default function LoginPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { toast } = useToast();
   const { signIn, loading } = useAuth();
-  const navigate = useNavigate();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -40,14 +39,8 @@ export default function LoginPage() {
 
     try {
       await signIn(email, password);
-      // Navigation is handled in the signIn function in AuthContext
-    } catch (error: any) {
+    } catch (error) {
       console.error("Login error:", error);
-      toast({
-        title: "Sign in failed",
-        description: error.message || "Please check your credentials and try again",
-        variant: "destructive",
-      });
     } finally {
       setIsSubmitting(false);
     }

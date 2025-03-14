@@ -1,165 +1,137 @@
-import { useState, useEffect } from "react";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Switch } from "@/components/ui/switch";
-import { Badge } from "@/components/ui/badge";
-import { ScrollArea } from "@/components/ui/scroll-area";
+
+import React, { useState, useEffect } from 'react';
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Switch } from '@/components/ui/switch';
+import { Label } from '@/components/ui/label';
+import { Laptop, Smartphone, LogOut } from 'lucide-react';
 import { useToast } from "@/hooks/use-toast";
-import { useAuth } from "@/hooks/useAuth";
-import { format } from "date-fns";
+import { useAuth } from "@/contexts/AuthContext";
 
 export default function SecuritySettings() {
+  const [twoFactorEnabled, setTwoFactorEnabled] = useState(false);
+  const [sessions, setSessions] = useState<any[]>([]);
+  const [loginHistory, setLoginHistory] = useState<any[]>([]);
   const { toast } = useToast();
   const { user } = useAuth();
-  const [twoFactorEnabled, setTwoFactorEnabled] = useState(false);
-  const [activeSessions, setActiveSessions] = useState<Array<{
-    id: string;
-    device: string;
-    location: string;
-    lastActive: Date;
-    current: boolean;
-  }>>([]);
-  const [loginHistory, setLoginHistory] = useState<Array<{
-    id: string;
-    date: Date;
-    device: string;
-    location: string;
-    status: "success" | "failed";
-  }>>([]);
-
+  
   useEffect(() => {
-    const loadSecuritySettings = () => {
-      const savedTwoFactor = localStorage.getItem(`twoFactorEnabled_${user?.email}`);
-      setTwoFactorEnabled(savedTwoFactor === "true");
-
-      const savedSessions = localStorage.getItem(`activeSessions_${user?.email}`);
+    // Get sessions from localStorage
+    const loadSessions = () => {
+      if (!user) return;
+      
+      const savedSessions = localStorage.getItem(`sessions_${user.email}`);
       if (savedSessions) {
-        const parsedSessions = JSON.parse(savedSessions);
-        setActiveSessions(parsedSessions.map((session: any) => ({
-          ...session,
-          lastActive: new Date(session.lastActive)
-        })));
+        setSessions(JSON.parse(savedSessions));
       } else {
+        // Create default current session
         const currentSession = {
-          id: Math.random().toString(36).substring(2),
-          device: getDeviceInfo(),
-          location: "Current location",
-          lastActive: new Date(),
-          current: true
+          id: 1,
+          device: `${getBrowser()} on ${getOS()}`,
+          location: 'Current Location',
+          lastActive: 'Active now',
+          icon: <Laptop className="h-4 w-4" />,
+          isCurrent: true,
         };
-        setActiveSessions([currentSession]);
-        localStorage.setItem(`activeSessions_${user?.email}`, JSON.stringify([currentSession]));
+        
+        setSessions([currentSession]);
+        localStorage.setItem(`sessions_${user.email}`, JSON.stringify([currentSession]));
       }
-
-      const savedHistory = localStorage.getItem(`loginHistory_${user?.email}`);
+      
+      // Get login history - create initial history if none exists
+      const savedHistory = localStorage.getItem(`loginHistory_${user.email}`);
       if (savedHistory) {
-        const parsedHistory = JSON.parse(savedHistory);
-        setLoginHistory(parsedHistory.map((entry: any) => ({
-          ...entry,
-          date: new Date(entry.date)
-        })));
+        setLoginHistory(JSON.parse(savedHistory));
       } else {
-        const initialLogin = {
-          id: Math.random().toString(36).substring(2),
-          date: new Date(),
-          device: getDeviceInfo(),
-          location: "Current location",
-          status: "success" as const
-        };
-        setLoginHistory([initialLogin]);
-        localStorage.setItem(`loginHistory_${user?.email}`, JSON.stringify([initialLogin]));
+        const newHistory = [
+          { 
+            date: new Date().toLocaleString(), 
+            device: `${getBrowser()} on ${getOS()}`, 
+            location: 'Current Location', 
+            status: 'Success' 
+          }
+        ];
+        setLoginHistory(newHistory);
+        localStorage.setItem(`loginHistory_${user.email}`, JSON.stringify(newHistory));
       }
     };
-
-    if (user) {
-      loadSecuritySettings();
-    }
+    
+    loadSessions();
   }, [user]);
 
-  const getDeviceInfo = () => {
+  const getBrowser = () => {
     const userAgent = navigator.userAgent;
-    let device = "Unknown device";
-    
-    if (/Windows/.test(userAgent)) {
-      device = "Windows";
-    } else if (/Macintosh|Mac OS X/.test(userAgent)) {
-      device = "Mac";
-    } else if (/iPhone/.test(userAgent)) {
-      device = "iPhone";
-    } else if (/iPad/.test(userAgent)) {
-      device = "iPad";
-    } else if (/Android/.test(userAgent)) {
-      device = "Android";
-    } else if (/Linux/.test(userAgent)) {
-      device = "Linux";
-    }
-    
-    const browser = 
-      userAgent.indexOf("Chrome") > -1 ? "Chrome" :
-      userAgent.indexOf("Safari") > -1 ? "Safari" :
-      userAgent.indexOf("Firefox") > -1 ? "Firefox" :
-      userAgent.indexOf("Edge") > -1 ? "Edge" :
-      userAgent.indexOf("MSIE") > -1 || userAgent.indexOf("Trident") > -1 ? "Internet Explorer" :
-      "Unknown browser";
-      
-    return `${device} - ${browser}`;
+    if (userAgent.indexOf("Chrome") > -1) return "Chrome";
+    if (userAgent.indexOf("Safari") > -1) return "Safari";
+    if (userAgent.indexOf("Firefox") > -1) return "Firefox";
+    if (userAgent.indexOf("MSIE") > -1 || userAgent.indexOf("Trident") > -1) return "Internet Explorer";
+    if (userAgent.indexOf("Edge") > -1) return "Edge";
+    return "Unknown Browser";
+  };
+  
+  const getOS = () => {
+    const userAgent = navigator.userAgent;
+    if (userAgent.indexOf("Windows") > -1) return "Windows";
+    if (userAgent.indexOf("Mac") > -1) return "macOS";
+    if (userAgent.indexOf("Linux") > -1) return "Linux";
+    if (userAgent.indexOf("Android") > -1) return "Android";
+    if (userAgent.indexOf("iOS") > -1 || userAgent.indexOf("iPhone") > -1 || userAgent.indexOf("iPad") > -1) return "iOS";
+    return "Unknown OS";
   };
 
-  const handleTwoFactorChange = (checked: boolean) => {
+  const handleLogout = (sessionId: number) => {
+    if (!user) return;
+    
+    // Filter out the session
+    const updatedSessions = sessions.filter(session => session.id !== sessionId);
+    setSessions(updatedSessions);
+    localStorage.setItem(`sessions_${user.email}`, JSON.stringify(updatedSessions));
+    
+    toast({
+      title: "Session logged out",
+      description: "The device has been logged out successfully."
+    });
+  };
+
+  const handleToggleTwoFactor = (checked: boolean) => {
     setTwoFactorEnabled(checked);
-    localStorage.setItem(`twoFactorEnabled_${user?.email}`, checked.toString());
     
     toast({
-      title: checked ? "Two-factor authentication enabled" : "Two-factor authentication disabled",
+      title: checked ? "Two-Factor Authentication Enabled" : "Two-Factor Authentication Disabled",
       description: checked 
-        ? "Your account is now more secure" 
-        : "Two-factor authentication has been turned off"
-    });
-  };
-
-  const terminateSession = (sessionId: string) => {
-    const updatedSessions = activeSessions.filter(session => session.id !== sessionId);
-    setActiveSessions(updatedSessions);
-    localStorage.setItem(`activeSessions_${user?.email}`, JSON.stringify(updatedSessions));
-    
-    toast({
-      title: "Session terminated",
-      description: "The selected session has been terminated successfully."
-    });
-  };
-
-  const terminateAllSessions = () => {
-    const currentSession = activeSessions.find(session => session.current);
-    const updatedSessions = currentSession ? [currentSession] : [];
-    setActiveSessions(updatedSessions);
-    localStorage.setItem(`activeSessions_${user?.email}`, JSON.stringify(updatedSessions));
-    
-    toast({
-      title: "All sessions terminated",
-      description: "All other sessions have been terminated successfully."
+        ? "Your account is now more secure with 2FA." 
+        : "Two-factor authentication has been disabled."
     });
   };
 
   return (
     <div className="space-y-6">
+      <div>
+        <h3 className="text-lg font-medium">Security</h3>
+        <p className="text-sm text-muted-foreground">
+          Manage your account security settings and active sessions.
+        </p>
+      </div>
+
       <Card>
         <CardHeader>
           <CardTitle>Two-Factor Authentication</CardTitle>
           <CardDescription>
-            Add an extra layer of security to your account
+            Add an extra layer of security to your account.
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="flex items-center justify-between">
-            <div className="space-y-0.5">
-              <h3 className="text-base font-medium">Authenticator app</h3>
-              <p className="text-sm text-muted-foreground">
-                Use an authenticator app to get two-factor authentication codes
-              </p>
-            </div>
+          <div className="flex items-center justify-between space-x-2">
+            <Label htmlFor="two-factor" className="flex-1">
+              Enable Two-Factor Authentication
+              <span className="block text-xs text-muted-foreground">
+                Receive verification codes via your mobile authenticator app.
+              </span>
+            </Label>
             <Switch
+              id="two-factor"
               checked={twoFactorEnabled}
-              onCheckedChange={handleTwoFactorChange}
+              onCheckedChange={handleToggleTwoFactor}
             />
           </div>
         </CardContent>
@@ -169,45 +141,42 @@ export default function SecuritySettings() {
         <CardHeader>
           <CardTitle>Active Sessions</CardTitle>
           <CardDescription>
-            Manage devices where you're currently logged in
+            Manage your currently active sessions across devices.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          <Button 
-            variant="outline" 
-            onClick={terminateAllSessions}
-            disabled={activeSessions.length <= 1}
-          >
-            Sign out from all other devices
-          </Button>
-          
-          <ScrollArea className="h-72 rounded-md border">
-            <div className="p-4 space-y-4">
-              {activeSessions.map(session => (
-                <div key={session.id} className="flex items-center justify-between p-3 border rounded-md">
-                  <div className="space-y-1">
-                    <div className="flex items-center space-x-2">
-                      <h4 className="text-sm font-medium">{session.device}</h4>
-                      {session.current && <Badge variant="outline">Current</Badge>}
-                    </div>
-                    <p className="text-xs text-muted-foreground">{session.location}</p>
-                    <p className="text-xs text-muted-foreground">
-                      Last active: {format(session.lastActive, "PPP 'at' p")}
-                    </p>
-                  </div>
-                  {!session.current && (
-                    <Button 
-                      size="sm" 
-                      variant="outline" 
-                      onClick={() => terminateSession(session.id)}
-                    >
-                      Sign out
-                    </Button>
-                  )}
+          {sessions.map((session) => (
+            <div key={session.id} className="flex items-center justify-between space-x-4 rounded-md border p-4">
+              <div className="flex items-start space-x-4">
+                <div className="rounded-full bg-secondary p-2">
+                  {session.icon}
                 </div>
-              ))}
+                <div>
+                  <p className="text-sm font-medium">
+                    {session.device}
+                    {session.isCurrent && (
+                      <span className="ml-2 text-xs text-green-500 font-medium">
+                        (Current)
+                      </span>
+                    )}
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    {session.location} • {session.lastActive}
+                  </p>
+                </div>
+              </div>
+              {!session.isCurrent && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handleLogout(session.id)}
+                >
+                  <LogOut className="mr-2 h-4 w-4" />
+                  Logout
+                </Button>
+              )}
             </div>
-          </ScrollArea>
+          ))}
         </CardContent>
       </Card>
 
@@ -215,31 +184,27 @@ export default function SecuritySettings() {
         <CardHeader>
           <CardTitle>Login History</CardTitle>
           <CardDescription>
-            Recent account access events
+            Recent login activity on your account.
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <ScrollArea className="h-72 rounded-md border">
-            <div className="p-4 space-y-4">
-              {loginHistory.map(entry => (
-                <div key={entry.id} className="flex items-center justify-between p-3 border rounded-md">
-                  <div className="space-y-1">
-                    <div className="flex items-center space-x-2">
-                      <h4 className="text-sm font-medium">{entry.device}</h4>
-                      <Badge variant={entry.status === "success" ? "default" : "destructive"}>
-                        {entry.status === "success" ? "Successful" : "Failed"}
-                      </Badge>
-                    </div>
-                    <p className="text-xs text-muted-foreground">{entry.location}</p>
-                    <p className="text-xs text-muted-foreground">
-                      {format(entry.date, "PPP 'at' p")}
-                    </p>
-                  </div>
+          <div className="space-y-4">
+            {loginHistory.map((log, index) => (
+              <div key={index} className="flex justify-between border-b pb-4 last:border-0 last:pb-0">
+                <div>
+                  <p className="text-sm font-medium">{log.date}</p>
+                  <p className="text-xs text-muted-foreground">{log.device} • {log.location}</p>
                 </div>
-              ))}
-            </div>
-          </ScrollArea>
+                <div>
+                  <span className="text-xs font-medium text-green-500">{log.status}</span>
+                </div>
+              </div>
+            ))}
+          </div>
         </CardContent>
+        <CardFooter>
+          <Button variant="outline" size="sm">View Full History</Button>
+        </CardFooter>
       </Card>
     </div>
   );

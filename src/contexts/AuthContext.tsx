@@ -1,14 +1,31 @@
-
-import { createContext, useState, useEffect, ReactNode } from "react";
+import { createContext, useContext, useState, useEffect, ReactNode } from "react";
 import { useNavigate } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { User, Profile, UserRole } from "@/types/auth";
-import { VALID_STUDENT_IDS } from "@/constants/validation";
-import { validateStudentId, generateRoleId } from "@/utils/auth-utils";
 
-// Re-export constants for backward compatibility
-export { VALID_STUDENT_IDS };
+// Types
+type UserRole = "student" | "staff" | "admin";
+type User = { id: string; email: string; role: UserRole };
+type Profile = {
+  id: string;
+  role: UserRole;
+  full_name: string;
+  email: string;
+  student_id?: string;
+  staff_id?: string;
+  admin_id?: string;
+  phone?: string | null;
+  avatar_url?: string | null;
+};
+
+// Mock users storage
+const USERS_BY_EMAIL: Record<string, User & { profile: Profile }> = {};
+
+// Valid student IDs
+export const VALID_STUDENT_IDS = [
+  "60821", "60822", "60823", "60824", "60825", 
+  "60826", "60827", "60828", "60829", "60830"
+];
 
 interface AuthContextType {
   user: User | null;
@@ -36,43 +53,30 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const checkSession = async () => {
       try {
-        setLoading(true);
-        // Check Supabase for existing session
-        const { data, error } = await supabase.auth.getSession();
+        // Check localStorage for a saved session
+        const savedEmail = localStorage.getItem("userEmail");
+        const savedRole = localStorage.getItem("userRole") as UserRole | null;
         
-        if (error) {
-          console.error("Error checking session:", error);
-          return;
-        }
-        
-        if (data.session) {
-          // Get user metadata from session
-          const sessionUser = data.session.user;
-          const userRole = sessionUser.user_metadata.role as UserRole || 'student';
+        if (savedEmail && savedRole) {
+          // Look up the user by email
+          const savedUser = USERS_BY_EMAIL[savedEmail];
           
-          // Create user object
-          const authUser: User = {
-            id: sessionUser.id,
-            email: sessionUser.email || '',
-            role: userRole
-          };
-          
-          setUser(authUser);
-          
-          // Fetch profile from user_metadata or from a profiles table
-          const userProfile: Profile = {
-            id: sessionUser.id,
-            email: sessionUser.email || '',
-            full_name: sessionUser.user_metadata.full_name || 'New User',
-            role: userRole,
-            phone: sessionUser.user_metadata.phone || null,
-            avatar_url: sessionUser.user_metadata.avatar_url || null,
-            student_id: userRole === 'student' ? sessionUser.user_metadata.student_id : undefined,
-            staff_id: userRole === 'staff' ? sessionUser.user_metadata.staff_id : undefined,
-            admin_id: userRole === 'admin' ? sessionUser.user_metadata.admin_id : undefined,
-          };
-          
-          setProfile(userProfile);
+          // If user exists and role matches
+          if (savedUser && savedUser.role === savedRole) {
+            setUser(savedUser);
+            setProfile(savedUser.profile);
+            
+            // Load saved profile data from localStorage if exists
+            const savedProfile = localStorage.getItem(`profile_${savedEmail}`);
+            if (savedProfile) {
+              const parsedProfile = JSON.parse(savedProfile);
+              setProfile(prev => prev ? { ...prev, ...parsedProfile } : parsedProfile);
+            }
+          } else {
+            // Email and role don't match, clear session
+            localStorage.removeItem("userEmail");
+            localStorage.removeItem("userRole");
+          }
         }
       } catch (error) {
         console.error("Session check error:", error);
@@ -82,45 +86,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
 
     checkSession();
-    
-    // Set up listener for auth state changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      if (event === 'SIGNED_IN' && session) {
-        const sessionUser = session.user;
-        const userRole = sessionUser.user_metadata.role as UserRole || 'student';
-        
-        // Create user object
-        const authUser: User = {
-          id: sessionUser.id,
-          email: sessionUser.email || '',
-          role: userRole
-        };
-        
-        setUser(authUser);
-        
-        // Create profile from user_metadata
-        const userProfile: Profile = {
-          id: sessionUser.id,
-          email: sessionUser.email || '',
-          full_name: sessionUser.user_metadata.full_name || 'New User',
-          role: userRole,
-          phone: sessionUser.user_metadata.phone || null,
-          avatar_url: sessionUser.user_metadata.avatar_url || null,
-          student_id: userRole === 'student' ? sessionUser.user_metadata.student_id : undefined,
-          staff_id: userRole === 'staff' ? sessionUser.user_metadata.staff_id : undefined,
-          admin_id: userRole === 'admin' ? sessionUser.user_metadata.admin_id : undefined,
-        };
-        
-        setProfile(userProfile);
-      } else if (event === 'SIGNED_OUT') {
-        setUser(null);
-        setProfile(null);
-      }
-    });
-
-    return () => {
-      subscription.unsubscribe();
-    };
   }, []);
 
   // Sign in function
@@ -128,39 +93,57 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       setLoading(true);
       
+      // Simulate authentication delay
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
       if (!email || !password) {
         throw new Error("Email and password are required");
       }
       
-      // Sign in with Supabase
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email,
-        password
-      });
-      
-      if (error) {
-        throw error;
+      // If a role is specified, check if the user exists with that role
+      if (role) {
+        const existingUser = USERS_BY_EMAIL[email];
+        
+        // If user exists but with a different role
+        if (existingUser && existingUser.role !== role) {
+          throw new Error(`This email is registered as a ${existingUser.role}. Please use a different email for ${role} role.`);
+        }
+        
+        // If user doesn't exist, create a new one with that role
+        if (!existingUser) {
+          // Create a mock user for this role
+          createDefaultUserForRole(email, role);
+        }
       }
       
-      if (!data.user) {
-        throw new Error("No user returned from authentication");
+      // Get the user from our storage
+      const user = USERS_BY_EMAIL[email];
+      
+      if (!user) {
+        throw new Error("Email not recognized. Please sign up first.");
       }
       
-      const sessionUser = data.user;
-      const userRole = sessionUser.user_metadata.role as UserRole || 'student';
+      // Store email and role for the session
+      localStorage.setItem("userEmail", email);
+      localStorage.setItem("userRole", user.role);
       
-      // If role is specified, check if it matches
-      if (role && role !== userRole) {
-        await supabase.auth.signOut();
-        throw new Error(`This email is not registered as a ${role}. Please use the correct role or register first.`);
+      // Set user and profile in state
+      setUser(user);
+      setProfile(user.profile);
+      
+      // Load saved profile data from localStorage if exists
+      const savedProfile = localStorage.getItem(`profile_${email}`);
+      if (savedProfile) {
+        const parsedProfile = JSON.parse(savedProfile);
+        setProfile(prev => prev ? { ...prev, ...parsedProfile } : parsedProfile);
       }
       
       // Navigate to appropriate dashboard based on role
-      navigate(`/${userRole}/dashboard`);
+      navigate(`/${user.role}/dashboard`);
       
       toast({
         title: "Sign in successful",
-        description: `Welcome back! You are logged in as ${userRole}.`,
+        description: `Welcome back! You are logged in as ${user.role}.`,
       });
     } catch (error: any) {
       console.error("Sign in error:", error);
@@ -175,10 +158,48 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  // Helper to create default users for roles
+  const createDefaultUserForRole = (email: string, role: UserRole) => {
+    const userId = `${role}-${Date.now()}`;
+    const user = {
+      id: userId,
+      email,
+      role,
+      profile: {
+        id: userId,
+        role,
+        full_name: `${role.charAt(0).toUpperCase() + role.slice(1)} User`,
+        email,
+        phone: null,
+        avatar_url: null,
+      }
+    };
+    
+    // Add role-specific IDs
+    if (role === 'student') {
+      user.profile.student_id = 'STU' + Math.floor(Math.random() * 1000).toString().padStart(3, '0');
+    } else if (role === 'staff') {
+      user.profile.staff_id = 'STA' + Math.floor(Math.random() * 1000).toString().padStart(3, '0');
+    } else if (role === 'admin') {
+      user.profile.admin_id = 'ADM' + Math.floor(Math.random() * 1000).toString().padStart(3, '0');
+    }
+    
+    // Store in our users object
+    USERS_BY_EMAIL[email] = user;
+    
+    return user;
+  };
+
   // Sign up function
   const signUp = async (email: string, password: string, role: UserRole, studentId?: string) => {
     try {
       setLoading(true);
+      
+      // Check if email already exists with a different role
+      const existingUser = USERS_BY_EMAIL[email];
+      if (existingUser) {
+        throw new Error(`This email is already registered as a ${existingUser.role}. Please use a different email for ${role} role.`);
+      }
       
       // For student role, validate student ID
       if (role === 'student') {
@@ -187,33 +208,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
       }
       
-      // Prepare user metadata
-      const userData = {
-        role,
-        full_name: `${role.charAt(0).toUpperCase() + role.slice(1)} User`,
-      };
+      // Simulate signup delay
+      await new Promise(resolve => setTimeout(resolve, 1000));
       
-      // Add role-specific IDs
+      // Create user for the selected role
+      const user = createDefaultUserForRole(email, role);
+      
+      // If student role and ID provided, update the student_id
       if (role === 'student' && studentId) {
-        Object.assign(userData, { student_id: studentId });
-      } else if (role === 'staff') {
-        Object.assign(userData, { staff_id: generateRoleId(role) });
-      } else if (role === 'admin') {
-        Object.assign(userData, { admin_id: generateRoleId(role) });
+        user.profile.student_id = studentId;
       }
       
-      // Sign up with Supabase
-      const { data, error } = await supabase.auth.signUp({
-        email,
-        password,
-        options: {
-          data: userData
-        }
-      });
+      setUser(user);
+      setProfile(user.profile);
       
-      if (error) {
-        throw error;
-      }
+      // Save role and email to localStorage
+      localStorage.setItem("userRole", role);
+      localStorage.setItem("userEmail", email);
       
       // Navigate to dashboard
       navigate(`/${role}/dashboard`);
@@ -234,6 +245,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  // Validate student ID
+  const validateStudentId = (studentId: string): boolean => {
+    return VALID_STUDENT_IDS.includes(studentId);
+  };
+
   // Update profile function
   const updateProfile = async (updatedProfile: Partial<Profile>) => {
     try {
@@ -243,18 +259,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         throw new Error("No active user session");
       }
       
-      // Update user metadata in Supabase
-      const { error } = await supabase.auth.updateUser({
-        data: updatedProfile
-      });
-      
-      if (error) {
-        throw error;
-      }
-      
-      // Update local profile state
+      // Update profile
       const newProfile = { ...profile, ...updatedProfile };
       setProfile(newProfile);
+      
+      // Also update in our storage
+      if (USERS_BY_EMAIL[user.email]) {
+        USERS_BY_EMAIL[user.email].profile = newProfile;
+      }
+      
+      // Save to localStorage for persistence
+      localStorage.setItem(`profile_${user.email}`, JSON.stringify(newProfile));
       
       toast({
         title: "Profile updated",
@@ -277,16 +292,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       setLoading(true);
       
-      // Sign out from Supabase
-      const { error } = await supabase.auth.signOut();
-      
-      if (error) {
-        throw error;
-      }
-      
       // Clear state
       setUser(null);
       setProfile(null);
+      
+      // Clear localStorage except for saved announcements and leave requests
+      localStorage.removeItem("userRole");
+      localStorage.removeItem("userEmail");
+      
+      // Keep data persistence option (if enabled by user)
+      const dataPersistence = localStorage.getItem("dataPersistenceEnabled");
+      
+      // If data persistence is not enabled, clear stored data
+      if (dataPersistence !== "true") {
+        localStorage.removeItem("announcements");
+        localStorage.removeItem("leaveRequests");
+      }
       
       // Navigate to login
       navigate("/auth/login");
@@ -295,7 +316,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         title: "Signed out",
         description: "You have been signed out successfully."
       });
-    } catch (error: any) {
+    } catch (error) {
       console.error("Sign out error:", error);
       toast({
         title: "Sign out failed",
@@ -323,5 +344,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   );
 }
 
-// Export the context
-export { AuthContext };
+// Hook to use the auth context
+export function useAuth() {
+  const context = useContext(AuthContext);
+  if (context === undefined) {
+    throw new Error("useAuth must be used within an AuthProvider");
+  }
+  return context;
+}

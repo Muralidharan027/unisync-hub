@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { Input } from "@/components/ui/input";
 import AnnouncementCard, { Announcement, AnnouncementCategory } from "./AnnouncementCard";
@@ -5,7 +6,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Filter, Search, X } from "lucide-react";
-import { useAuth } from "@/hooks/useAuth";
+import { useAuth } from "@/contexts/AuthContext";
 import AnnouncementForm from "./AnnouncementForm";
 
 interface AnnouncementsListProps {

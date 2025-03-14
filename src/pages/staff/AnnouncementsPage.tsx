@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { Bell, FilePlus, History } from "lucide-react";
 import { ModuleTabs } from "@/components/ui/module-tabs";
@@ -6,7 +7,7 @@ import AnnouncementForm from "@/components/announcements/AnnouncementForm";
 import { Announcement, AnnouncementCategory } from "@/components/announcements/AnnouncementCard";
 import DashboardLayout from "@/layouts/DashboardLayout";
 import { useToast } from "@/hooks/use-toast";
-import { useAuth } from "@/hooks/useAuth";
+import { useAuth } from "@/contexts/AuthContext";
 import { addAnnouncement, deleteAnnouncement, getAnnouncements, updateAnnouncement } from "@/store/announcements";
 
 export default function StaffAnnouncementsPage() {
@@ -22,9 +23,12 @@ export default function StaffAnnouncementsPage() {
     { id: "history", label: "My Announcements", icon: <History /> },
   ];
   
+  // Initial load and polling for announcements updates
   useEffect(() => {
+    // Initial load
     setAnnouncements(getAnnouncements());
     
+    // Poll for updates
     const interval = setInterval(() => {
       setAnnouncements(getAnnouncements());
     }, 2000);
@@ -40,7 +44,9 @@ export default function StaffAnnouncementsPage() {
   ) => {
     setSubmitting(true);
     
+    // Simulate API call
     setTimeout(() => {
+      // Create file URL if provided
       let fileData = {};
       if (file) {
         const fileUrl = URL.createObjectURL(file);
@@ -50,6 +56,7 @@ export default function StaffAnnouncementsPage() {
         };
       }
       
+      // Create new announcement
       const newAnnouncement: Announcement = {
         id: `announcement-${Date.now()}`,
         title,
@@ -61,8 +68,10 @@ export default function StaffAnnouncementsPage() {
         ...fileData
       };
       
+      // Add to global store
       addAnnouncement(newAnnouncement);
       
+      // Update local state
       setAnnouncements(getAnnouncements());
       
       setSubmitting(false);
@@ -71,19 +80,24 @@ export default function StaffAnnouncementsPage() {
         description: "Your announcement has been posted successfully.",
       });
       
+      // Switch to view tab after successful submission
       setActiveTab("view");
     }, 1500);
   };
   
   const handleUpdateAnnouncement = (id: string, updatedData: Partial<Announcement>) => {
+    // Update in global store
     updateAnnouncement(id, updatedData);
     
+    // Update local state
     setAnnouncements(getAnnouncements());
   };
   
   const handleDeleteAnnouncement = (id: string) => {
+    // Delete from global store
     deleteAnnouncement(id);
     
+    // Update local state
     setAnnouncements(getAnnouncements());
     
     toast({
