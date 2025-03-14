@@ -1,29 +1,14 @@
 
-import { createContext, useContext, useState, useEffect, ReactNode } from "react";
+import { createContext, useState, useEffect, ReactNode } from "react";
 import { useNavigate } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
+import { User, Profile, UserRole } from "@/types/auth";
+import { VALID_STUDENT_IDS } from "@/constants/validation";
+import { validateStudentId, generateRoleId } from "@/utils/auth-utils";
 
-// Types
-type UserRole = "student" | "staff" | "admin";
-type User = { id: string; email: string; role: UserRole };
-type Profile = {
-  id: string;
-  role: UserRole;
-  full_name: string;
-  email: string;
-  student_id?: string;
-  staff_id?: string;
-  admin_id?: string;
-  phone?: string | null;
-  avatar_url?: string | null;
-};
-
-// Valid student IDs
-export const VALID_STUDENT_IDS = [
-  "60821", "60822", "60823", "60824", "60825", 
-  "60826", "60827", "60828", "60829", "60830"
-];
+// Re-export constants for backward compatibility
+export { VALID_STUDENT_IDS };
 
 interface AuthContextType {
   user: User | null;
@@ -212,9 +197,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (role === 'student' && studentId) {
         Object.assign(userData, { student_id: studentId });
       } else if (role === 'staff') {
-        Object.assign(userData, { staff_id: 'STA' + Math.floor(Math.random() * 1000).toString().padStart(3, '0') });
+        Object.assign(userData, { staff_id: generateRoleId(role) });
       } else if (role === 'admin') {
-        Object.assign(userData, { admin_id: 'ADM' + Math.floor(Math.random() * 1000).toString().padStart(3, '0') });
+        Object.assign(userData, { admin_id: generateRoleId(role) });
       }
       
       // Sign up with Supabase
@@ -247,11 +232,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     } finally {
       setLoading(false);
     }
-  };
-
-  // Validate student ID
-  const validateStudentId = (studentId: string): boolean => {
-    return VALID_STUDENT_IDS.includes(studentId);
   };
 
   // Update profile function
@@ -343,11 +323,5 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   );
 }
 
-// Hook to use the auth context
-export function useAuth() {
-  const context = useContext(AuthContext);
-  if (context === undefined) {
-    throw new Error("useAuth must be used within an AuthProvider");
-  }
-  return context;
-}
+// Export the context
+export { AuthContext };
