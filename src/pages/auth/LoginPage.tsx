@@ -12,6 +12,7 @@ import {
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { Loader2, LogIn, Eye, EyeOff } from 'lucide-react';
@@ -25,12 +26,12 @@ import {
 import { validateRegisterNumber, validateEmail } from '@/utils/validation';
 
 export default function LoginPage() {
-  const [email, setEmail] = useState('');
+  const [identifier, setIdentifier] = useState('');
   const [password, setPassword] = useState('');
   const [role, setRole] = useState<'student' | 'staff' | 'admin'>('student');
-  const [id, setId] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [rememberMe, setRememberMe] = useState(false);
   const { toast } = useToast();
   const { signIn, loading } = useAuth();
   const navigate = useNavigate();
@@ -39,7 +40,7 @@ export default function LoginPage() {
     e.preventDefault();
     setIsSubmitting(true);
     
-    if (!email || !id || (role !== 'student' && !password)) {
+    if (!identifier || !password) {
       toast({
         title: "Missing information",
         description: "Please fill in all required fields",
@@ -49,32 +50,44 @@ export default function LoginPage() {
       return;
     }
 
-    // For students, validate the register number format
-    if (role === 'student' && !validateRegisterNumber(id)) {
-      toast({
-        title: "Invalid Register Number",
-        description: "Register Number must be exactly 13 digits",
-        variant: "destructive",
-      });
-      setIsSubmitting(false);
-      return;
-    }
-
-    // Email validation
-    if (!validateEmail(email)) {
-      toast({
-        title: "Invalid Email",
-        description: "Please enter a valid email address",
-        variant: "destructive", 
-      });
-      setIsSubmitting(false);
-      return;
+    // Validate identifier based on role
+    if (role === 'student') {
+      const isEmail = identifier.includes('@');
+      
+      if (isEmail && !validateEmail(identifier)) {
+        toast({
+          title: "Invalid Email",
+          description: "Please enter a valid email address",
+          variant: "destructive",
+        });
+        setIsSubmitting(false);
+        return;
+      }
+      
+      if (!isEmail && !validateRegisterNumber(identifier)) {
+        toast({
+          title: "Invalid Register Number",
+          description: "Register Number must be exactly 13 digits",
+          variant: "destructive",
+        });
+        setIsSubmitting(false);
+        return;
+      }
+    } else {
+      // For staff and admin, must be a valid email
+      if (!validateEmail(identifier)) {
+        toast({
+          title: "Invalid Email",
+          description: "Please enter a valid email address",
+          variant: "destructive", 
+        });
+        setIsSubmitting(false);
+        return;
+      }
     }
 
     try {
-      // For students, use the register number as the password
-      const finalPassword = role === 'student' ? id : password;
-      await signIn(email, finalPassword, { role, id });
+      await signIn(identifier, password, { role });
     } catch (error) {
       console.error("Login error:", error);
       // Error is already handled in the signIn function
@@ -83,14 +96,24 @@ export default function LoginPage() {
     }
   };
 
-  const getIdLabel = () => {
+  const getIdentifierLabel = () => {
     switch (role) {
       case 'student':
-        return 'Register Number (13 digits)';
+        return 'Email / Register Number';
       case 'staff':
-        return 'Staff ID';
       case 'admin':
-        return 'Admin Code';
+        return 'College Email Address';
+    }
+  };
+
+  const getIdentifierPlaceholder = () => {
+    switch (role) {
+      case 'student':
+        return 'Enter your email or 13-digit register number';
+      case 'staff':
+        return 'staff@college.edu';
+      case 'admin':
+        return 'admin@college.edu';
     }
   };
 
@@ -106,13 +129,13 @@ export default function LoginPage() {
         <form onSubmit={handleSubmit}>
           <CardContent className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
+              <Label htmlFor="identifier">{getIdentifierLabel()}</Label>
               <Input
-                id="email"
-                type="email"
-                placeholder="your.email@example.com"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                id="identifier"
+                type="text"
+                placeholder={getIdentifierPlaceholder()}
+                value={identifier}
+                onChange={(e) => setIdentifier(e.target.value)}
                 required
               />
             </div>
@@ -133,55 +156,52 @@ export default function LoginPage() {
               </Select>
             </div>
             <div className="space-y-2">
-              <Label htmlFor="id">{getIdLabel()}</Label>
-              <Input
-                id="id"
-                type="text"
-                placeholder={role === 'student' ? "Enter your 13-digit Register Number" : `Enter your ${role} ID`}
-                value={id}
-                onChange={(e) => setId(e.target.value)}
-                required
-              />
-              {role === 'student' && (
-                <p className="text-xs text-gray-500">Your Register Number serves as both your ID and password</p>
-              )}
-            </div>
-            {role !== 'student' && (
-              <div className="space-y-2">
-                <Label htmlFor="password">Password</Label>
-                <div className="relative">
-                  <Input
-                    id="password"
-                    type={showPassword ? "text" : "password"}
-                    placeholder="••••••••"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    required
-                  />
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon"
-                    className="absolute right-0 top-0 h-10 w-10"
-                    onClick={() => setShowPassword(!showPassword)}
-                  >
-                    {showPassword ? (
-                      <EyeOff className="h-4 w-4" />
-                    ) : (
-                      <Eye className="h-4 w-4" />
-                    )}
-                  </Button>
-                </div>
-                <div className="text-right">
-                  <Link 
-                    to="/auth/forgot-password" 
-                    className="text-sm text-primary hover:underline"
-                  >
-                    Forgot password?
-                  </Link>
-                </div>
+              <Label htmlFor="password">Password</Label>
+              <div className="relative">
+                <Input
+                  id="password"
+                  type={showPassword ? "text" : "password"}
+                  placeholder="••••••••"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  required
+                />
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  className="absolute right-0 top-0 h-10 w-10"
+                  onClick={() => setShowPassword(!showPassword)}
+                >
+                  {showPassword ? (
+                    <EyeOff className="h-4 w-4" />
+                  ) : (
+                    <Eye className="h-4 w-4" />
+                  )}
+                </Button>
               </div>
-            )}
+              <div className="flex items-center justify-between mt-2">
+                <div className="flex items-center space-x-2">
+                  <Checkbox 
+                    id="remember-me" 
+                    checked={rememberMe} 
+                    onCheckedChange={(checked) => setRememberMe(checked as boolean)}
+                  />
+                  <label
+                    htmlFor="remember-me"
+                    className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                  >
+                    Remember me
+                  </label>
+                </div>
+                <Link 
+                  to="/auth/forgot-password" 
+                  className="text-sm text-primary hover:underline"
+                >
+                  Forgot password?
+                </Link>
+              </div>
+            </div>
           </CardContent>
           <CardFooter className="flex flex-col space-y-2">
             <Button type="submit" className="w-full" disabled={isSubmitting || loading}>

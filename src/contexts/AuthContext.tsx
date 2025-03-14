@@ -24,21 +24,21 @@ interface ProfileBase {
 interface StudentProfile extends ProfileBase {
   role: "student";
   student_id: string | null;
-  staff_id?: undefined;
-  admin_id?: undefined;
+  staff_id?: string | null;
+  admin_id?: string | null;
 }
 
 interface StaffProfile extends ProfileBase {
   role: "staff";
-  student_id?: undefined;
+  student_id?: string | null;
   staff_id: string | null;
-  admin_id?: undefined;
+  admin_id?: string | null;
 }
 
 interface AdminProfile extends ProfileBase {
   role: "admin";
-  student_id?: undefined;
-  staff_id?: undefined;
+  student_id?: string | null;
+  staff_id?: string | null;
   admin_id: string | null;
 }
 
@@ -48,8 +48,8 @@ interface AuthContextType {
   user: User | null;
   profile: Profile | null;
   loading: boolean;
-  signIn: (email: string, password: string, roleData?: { role: UserRole; id: string }) => Promise<void>;
-  signUp: (email: string, password: string, role: UserRole, userData: { fullName: string; id: string }) => Promise<void>;
+  signIn: (email: string, password: string, roleData?: { role: UserRole; id?: string }) => Promise<void>;
+  signUp: (email: string, password: string, role: UserRole, userData: { fullName: string; id?: string }) => Promise<void>;
   signOut: () => Promise<void>;
   validateStudentId: (studentId: string) => boolean;
   resetPassword: (email: string) => Promise<void>;
@@ -70,31 +70,37 @@ const MOCK_USERS = {
       full_name: "Student User",
       email: "student@example.com",
       student_id: "2213141033127",
+      staff_id: null,
+      admin_id: null,
       phone: null,
       avatar_url: null,
     }
   },
   staff: {
     id: "staff-123",
-    email: "staff@example.com",
+    email: "staff@college.edu",
     profile: {
       id: "staff-123",
       role: "staff" as UserRole,
       full_name: "Staff User",
-      email: "staff@example.com",
+      email: "staff@college.edu",
+      student_id: null,
       staff_id: "STA001",
+      admin_id: null,
       phone: null,
       avatar_url: null,
     }
   },
   admin: {
     id: "admin-123",
-    email: "admin@example.com",
+    email: "admin@college.edu",
     profile: {
       id: "admin-123",
       role: "admin" as UserRole,
       full_name: "Admin User",
-      email: "admin@example.com",
+      email: "admin@college.edu",
+      student_id: null,
+      staff_id: null,
       admin_id: "ADM001",
       phone: null,
       avatar_url: null,
@@ -157,7 +163,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   // Sign in function
-  const signIn = async (email: string, password: string, roleData?: { role: UserRole; id: string }) => {
+  const signIn = async (email: string, password: string, roleData?: { role: UserRole; id?: string }) => {
     try {
       setLoading(true);
       
@@ -170,31 +176,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const mockUser = MOCK_USERS[role];
         
         if (mockUser && mockUser.email === email) {
-          // Validate role-specific ID
-          let idValid = false;
-          
-          if (role === 'student') {
-            // For students, check if the ID matches the student_id
-            const studentProfile = mockUser.profile as StudentProfile;
-            if (studentProfile && studentProfile.student_id === roleData?.id) {
-              idValid = true;
-            }
-          } else if (role === 'staff') {
-            // For staff, check if the ID matches the staff_id
-            const staffProfile = mockUser.profile as StaffProfile;
-            if (staffProfile && staffProfile.staff_id === roleData?.id) {
-              idValid = true;
-            }
-          } else if (role === 'admin') {
-            // For admin, check if the ID matches the admin_id
-            const adminProfile = mockUser.profile as AdminProfile;
-            if (adminProfile && adminProfile.admin_id === roleData?.id) {
-              idValid = true;
-            }
-          }
-          
-          if (!idValid) {
-            throw new Error(`Invalid ${role} ID`);
+          // Staff and Admin require college domain emails
+          if ((role === 'staff' || role === 'admin') && !email.endsWith('@college.edu')) {
+            throw new Error(`${role} must use a college domain email`);
           }
           
           setUser(mockUser);
@@ -236,28 +220,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           if (profileError) throw profileError;
 
           // Role-specific validations
-          if (roleData) {
-            if (profileData.role !== roleData.role) {
-              throw new Error(`This account is not registered as a ${roleData.role}`);
-            }
-            
-            // Validate ID based on role
-            if (roleData.role === 'student') {
-              const studentProfile = profileData as StudentProfile;
-              if (!studentProfile.student_id || studentProfile.student_id !== roleData.id) {
-                throw new Error('Invalid Student ID');
-              }
-            } else if (roleData.role === 'staff') {
-              const staffProfile = profileData as StaffProfile;
-              if (!staffProfile.staff_id || staffProfile.staff_id !== roleData.id) {
-                throw new Error('Invalid Staff ID');
-              }
-            } else if (roleData.role === 'admin') {
-              const adminProfile = profileData as AdminProfile;
-              if (!adminProfile.admin_id || adminProfile.admin_id !== roleData.id) {
-                throw new Error('Invalid Admin ID');
-              }
-            }
+          if (roleData && profileData.role !== roleData.role) {
+            throw new Error(`This account is not registered as a ${roleData.role}`);
+          }
+          
+          // Staff and Admin require college domain emails
+          if ((profileData.role === 'staff' || profileData.role === 'admin') && 
+              !profileData.email.endsWith('@college.edu')) {
+            throw new Error(`${profileData.role} must use a college domain email`);
           }
           
           setUser({ id: data.user.id, email: data.user.email || '' });
@@ -286,13 +256,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   // Sign up function
-  const signUp = async (email: string, password: string, role: UserRole, userData: { fullName: string; id: string }) => {
+  const signUp = async (email: string, password: string, role: UserRole, userData: { fullName: string; id?: string }) => {
     try {
       setLoading(true);
       
       // Role-specific validations
       if (role === 'student') {
-        if (!validateRegisterNumber(userData.id)) {
+        if (!userData.id || !validateRegisterNumber(userData.id)) {
           throw new Error("Invalid register number. Must be exactly 13 digits.");
         }
       } else {
@@ -310,30 +280,42 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const mockUser = { ...MOCK_USERS[role] };
         mockUser.email = email;
         
-        // Update the appropriate ID field and role-specific data
+        // Update the profile data with user information
         if (role === 'student') {
           mockUser.profile = {
             ...mockUser.profile,
             student_id: userData.id,
+            staff_id: null,
+            admin_id: null,
             full_name: userData.fullName,
             email: email,
-            role: 'student'
+            role: 'student',
+            phone: null,
+            avatar_url: null
           } as StudentProfile;
         } else if (role === 'staff') {
           mockUser.profile = {
             ...mockUser.profile,
-            staff_id: userData.id,
+            student_id: null,
+            staff_id: 'STAFF' + Math.floor(1000 + Math.random() * 9000),
+            admin_id: null,
             full_name: userData.fullName,
             email: email,
-            role: 'staff'
+            role: 'staff',
+            phone: null,
+            avatar_url: null
           } as StaffProfile;
         } else if (role === 'admin') {
           mockUser.profile = {
             ...mockUser.profile,
-            admin_id: userData.id,
+            student_id: null,
+            staff_id: null,
+            admin_id: 'ADMIN' + Math.floor(1000 + Math.random() * 9000),
             full_name: userData.fullName,
             email: email,
-            role: 'admin'
+            role: 'admin',
+            phone: null,
+            avatar_url: null
           } as AdminProfile;
         }
         
@@ -355,15 +337,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         // Real Supabase signup
         console.log("Signing up with:", { email, password, role, userData });
         
+        // Prepare metadata based on role
+        const metadata: any = {
+          full_name: userData.fullName,
+          role
+        };
+        
+        if (role === 'student' && userData.id) {
+          metadata.student_id = userData.id;
+        }
+        
         const { data, error } = await supabase.auth.signUp({
           email,
           password,
           options: {
-            data: {
-              full_name: userData.fullName,
-              role,
-              [`${role}_id`]: userData.id,
-            }
+            data: metadata
           }
         });
         

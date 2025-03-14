@@ -25,10 +25,8 @@ export const validateEmail = (email: string): boolean => {
  * @returns true if the email has a valid college domain, false otherwise
  */
 export const validateCollegeDomainEmail = (email: string): boolean => {
-  // This would be customized to check for your specific college domain
-  // For example: return /^[^\s@]+@college\.edu$/.test(email);
-  // For testing purposes, we'll accept any valid email
-  return validateEmail(email);
+  // Check for a valid email with college.edu domain
+  return validateEmail(email) && email.endsWith('@college.edu');
 };
 
 /**

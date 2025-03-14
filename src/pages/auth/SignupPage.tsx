@@ -46,14 +46,6 @@ export default function SignupPage() {
   const { signUp, validateStudentId, loading } = useAuth();
   const navigate = useNavigate();
 
-  // For student role, use register number as password
-  useEffect(() => {
-    if (role === 'student' && id) {
-      setPassword(id);
-      setConfirmPassword(id);
-    }
-  }, [role, id]);
-
   // Calculate password strength whenever password changes
   useEffect(() => {
     if (password) {
@@ -68,7 +60,7 @@ export default function SignupPage() {
     setIsSubmitting(true);
     
     // Form validation
-    if (!email || !fullName || !id) {
+    if (!email || !fullName || (role === 'student' && !id)) {
       toast({
         title: "Missing information",
         description: "Please fill in all required fields",
@@ -99,10 +91,6 @@ export default function SignupPage() {
         setIsSubmitting(false);
         return;
       }
-      
-      // For students, use the register number as the password
-      setPassword(id);
-      setConfirmPassword(id);
     } else {
       // Email domain validation for staff and admin
       if (!validateCollegeDomainEmail(email)) {
@@ -114,58 +102,46 @@ export default function SignupPage() {
         setIsSubmitting(false);
         return;
       }
-      
-      // Password validation for non-student roles
-      if (!password || !confirmPassword) {
-        toast({
-          title: "Missing password",
-          description: "Please enter and confirm your password",
-          variant: "destructive",
-        });
-        setIsSubmitting(false);
-        return;
-      }
+    }
+    
+    // Password validation for all roles
+    if (!password || !confirmPassword) {
+      toast({
+        title: "Missing password",
+        description: "Please enter and confirm your password",
+        variant: "destructive",
+      });
+      setIsSubmitting(false);
+      return;
+    }
 
-      if (!validatePassword(password)) {
-        toast({
-          title: "Password too weak",
-          description: "Password must be at least 6 characters long",
-          variant: "destructive",
-        });
-        setIsSubmitting(false);
-        return;
-      }
+    if (!validatePassword(password)) {
+      toast({
+        title: "Password too weak",
+        description: "Password must be at least 6 characters long",
+        variant: "destructive",
+      });
+      setIsSubmitting(false);
+      return;
+    }
 
-      if (password !== confirmPassword) {
-        toast({
-          title: "Passwords do not match",
-          description: "Please ensure both passwords match",
-          variant: "destructive",
-        });
-        setIsSubmitting(false);
-        return;
-      }
+    if (password !== confirmPassword) {
+      toast({
+        title: "Passwords do not match",
+        description: "Please ensure both passwords match",
+        variant: "destructive",
+      });
+      setIsSubmitting(false);
+      return;
     }
 
     try {
-      // For students, the password is the same as the register number
-      const finalPassword = role === 'student' ? id : password;
-      await signUp(email, finalPassword, role, { fullName, id });
+      // Sign up with the provided information
+      await signUp(email, password, role, { fullName, id });
     } catch (error) {
       console.error("Signup error:", error);
       // Error is handled in the signUp function
       setIsSubmitting(false);
-    }
-  };
-
-  const getIdLabel = () => {
-    switch (role) {
-      case 'student':
-        return 'Register Number (13 digits)';
-      case 'staff':
-        return 'Staff ID';
-      case 'admin':
-        return 'Admin Code';
     }
   };
 
@@ -241,91 +217,88 @@ export default function SignupPage() {
                 </SelectContent>
               </Select>
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="id">{getIdLabel()}</Label>
-              <Input
-                id="id"
-                type="text"
-                placeholder={role === 'student' ? "Enter your 13-digit Register Number" : `Enter your ${role} ID`}
-                value={id}
-                onChange={(e) => setId(e.target.value)}
-                required
-              />
-              {role === 'student' && (
+            
+            {role === 'student' && (
+              <div className="space-y-2">
+                <Label htmlFor="id">Register Number (13 digits)</Label>
+                <Input
+                  id="id"
+                  type="text"
+                  placeholder="Enter your 13-digit Register Number"
+                  value={id}
+                  onChange={(e) => setId(e.target.value)}
+                  required
+                />
                 <p className="text-xs text-muted-foreground">
-                  Your Register Number will also be used as your password.
+                  Your Register Number is used for identification.
                 </p>
+              </div>
+            )}
+            
+            <div className="space-y-2">
+              <Label htmlFor="password">Password</Label>
+              <div className="relative">
+                <Input
+                  id="password"
+                  type={showPassword ? "text" : "password"}
+                  placeholder="••••••••"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  required
+                />
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  className="absolute right-0 top-0 h-10 w-10"
+                  onClick={() => setShowPassword(!showPassword)}
+                >
+                  {showPassword ? (
+                    <EyeOff className="h-4 w-4" />
+                  ) : (
+                    <Eye className="h-4 w-4" />
+                  )}
+                </Button>
+              </div>
+              {password && (
+                <div className="space-y-1">
+                  <div className="flex justify-between text-xs">
+                    <span>Password strength:</span>
+                    <span className="font-medium capitalize">{passwordStrength}</span>
+                  </div>
+                  <Progress value={getStrengthPercentage()} className={getStrengthColor()} />
+                </div>
               )}
             </div>
-            
-            {role !== 'student' && (
-              <>
-                <div className="space-y-2">
-                  <Label htmlFor="password">Password</Label>
-                  <div className="relative">
-                    <Input
-                      id="password"
-                      type={showPassword ? "text" : "password"}
-                      placeholder="••••••••"
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                      required
-                    />
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="icon"
-                      className="absolute right-0 top-0 h-10 w-10"
-                      onClick={() => setShowPassword(!showPassword)}
-                    >
-                      {showPassword ? (
-                        <EyeOff className="h-4 w-4" />
-                      ) : (
-                        <Eye className="h-4 w-4" />
-                      )}
-                    </Button>
-                  </div>
-                  {password && (
-                    <div className="space-y-1">
-                      <div className="flex justify-between text-xs">
-                        <span>Password strength:</span>
-                        <span className="font-medium capitalize">{passwordStrength}</span>
-                      </div>
-                      <Progress value={getStrengthPercentage()} className={getStrengthColor()} />
-                    </div>
+            <div className="space-y-2">
+              <Label htmlFor="confirm-password">Confirm Password</Label>
+              <div className="relative">
+                <Input
+                  id="confirm-password"
+                  type={showConfirmPassword ? "text" : "password"}
+                  placeholder="••••••••"
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  required
+                />
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  className="absolute right-0 top-0 h-10 w-10"
+                  onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                >
+                  {showConfirmPassword ? (
+                    <EyeOff className="h-4 w-4" />
+                  ) : (
+                    <Eye className="h-4 w-4" />
                   )}
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="confirm-password">Confirm Password</Label>
-                  <div className="relative">
-                    <Input
-                      id="confirm-password"
-                      type={showConfirmPassword ? "text" : "password"}
-                      placeholder="••••••••"
-                      value={confirmPassword}
-                      onChange={(e) => setConfirmPassword(e.target.value)}
-                      required
-                    />
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="icon"
-                      className="absolute right-0 top-0 h-10 w-10"
-                      onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                    >
-                      {showConfirmPassword ? (
-                        <EyeOff className="h-4 w-4" />
-                      ) : (
-                        <Eye className="h-4 w-4" />
-                      )}
-                    </Button>
-                  </div>
-                  {password && confirmPassword && password !== confirmPassword && (
-                    <p className="text-xs text-destructive">Passwords do not match</p>
-                  )}
-                </div>
-              </>
-            )}
+                </Button>
+              </div>
+              {password && confirmPassword && password !== confirmPassword && (
+                <p className="text-xs text-destructive">Passwords do not match</p>
+              )}
+            </div>
           </CardContent>
           <CardFooter className="flex flex-col space-y-2">
             <Button type="submit" className="w-full" disabled={isSubmitting || loading}>
