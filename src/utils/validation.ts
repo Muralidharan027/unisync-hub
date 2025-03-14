@@ -20,6 +20,18 @@ export const validateEmail = (email: string): boolean => {
 };
 
 /**
+ * Validates a college domain email for staff and admin
+ * @param email The email to validate
+ * @returns true if the email has a valid college domain, false otherwise
+ */
+export const validateCollegeDomainEmail = (email: string): boolean => {
+  // This would be customized to check for your specific college domain
+  // For example: return /^[^\s@]+@college\.edu$/.test(email);
+  // For testing purposes, we'll accept any valid email
+  return validateEmail(email);
+};
+
+/**
  * Validates a password for minimum security requirements
  * @param password The password to validate
  * @returns true if the password meets minimum requirements, false otherwise

@@ -14,7 +14,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
-import { Loader2, UserPlus } from 'lucide-react';
+import { Loader2, UserPlus, Eye, EyeOff } from 'lucide-react';
+import { Progress } from "@/components/ui/progress";
 import { 
   Select, 
   SelectContent, 
@@ -22,7 +23,13 @@ import {
   SelectTrigger, 
   SelectValue 
 } from "@/components/ui/select";
-import { validateEmail, validatePassword, validateRegisterNumber } from '@/utils/validation';
+import { 
+  validateEmail, 
+  validatePassword, 
+  validateRegisterNumber, 
+  calculatePasswordStrength,
+  validateCollegeDomainEmail
+} from '@/utils/validation';
 
 export default function SignupPage() {
   const [email, setEmail] = useState('');
@@ -32,6 +39,9 @@ export default function SignupPage() {
   const [role, setRole] = useState<'student' | 'staff' | 'admin'>('student');
   const [id, setId] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [passwordStrength, setPasswordStrength] = useState<'weak' | 'medium' | 'strong'>('weak');
   const { toast } = useToast();
   const { signUp, validateStudentId, loading } = useAuth();
   const navigate = useNavigate();
@@ -43,6 +53,15 @@ export default function SignupPage() {
       setConfirmPassword(id);
     }
   }, [role, id]);
+
+  // Calculate password strength whenever password changes
+  useEffect(() => {
+    if (password) {
+      setPasswordStrength(calculatePasswordStrength(password));
+    } else {
+      setPasswordStrength('weak');
+    }
+  }, [password]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -69,7 +88,7 @@ export default function SignupPage() {
       return;
     }
 
-    // Student-specific validation
+    // Role-specific validation
     if (role === 'student') {
       if (!validateRegisterNumber(id)) {
         toast({
@@ -85,6 +104,17 @@ export default function SignupPage() {
       setPassword(id);
       setConfirmPassword(id);
     } else {
+      // Email domain validation for staff and admin
+      if (!validateCollegeDomainEmail(email)) {
+        toast({
+          title: "Invalid email domain",
+          description: "Staff and admin must use a college domain email",
+          variant: "destructive",
+        });
+        setIsSubmitting(false);
+        return;
+      }
+      
       // Password validation for non-student roles
       if (!password || !confirmPassword) {
         toast({
@@ -98,7 +128,7 @@ export default function SignupPage() {
 
       if (!validatePassword(password)) {
         toast({
-          title: "Password too short",
+          title: "Password too weak",
           description: "Password must be at least 6 characters long",
           variant: "destructive",
         });
@@ -139,6 +169,24 @@ export default function SignupPage() {
     }
   };
 
+  const getStrengthColor = () => {
+    switch (passwordStrength) {
+      case 'weak': return 'bg-red-500';
+      case 'medium': return 'bg-yellow-500';
+      case 'strong': return 'bg-green-500';
+      default: return 'bg-gray-300';
+    }
+  };
+
+  const getStrengthPercentage = () => {
+    switch (passwordStrength) {
+      case 'weak': return 33;
+      case 'medium': return 67;
+      case 'strong': return 100;
+      default: return 0;
+    }
+  };
+
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900 p-4">
       <Card className="w-full max-w-md">
@@ -160,6 +208,11 @@ export default function SignupPage() {
                 onChange={(e) => setEmail(e.target.value)}
                 required
               />
+              {(role === 'staff' || role === 'admin') && (
+                <p className="text-xs text-muted-foreground">
+                  Must be a valid college domain email
+                </p>
+              )}
             </div>
             <div className="space-y-2">
               <Label htmlFor="fullName">Full Name</Label>
@@ -209,25 +262,67 @@ export default function SignupPage() {
               <>
                 <div className="space-y-2">
                   <Label htmlFor="password">Password</Label>
-                  <Input
-                    id="password"
-                    type="password"
-                    placeholder="••••••••"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    required
-                  />
+                  <div className="relative">
+                    <Input
+                      id="password"
+                      type={showPassword ? "text" : "password"}
+                      placeholder="••••••••"
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      required
+                    />
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      className="absolute right-0 top-0 h-10 w-10"
+                      onClick={() => setShowPassword(!showPassword)}
+                    >
+                      {showPassword ? (
+                        <EyeOff className="h-4 w-4" />
+                      ) : (
+                        <Eye className="h-4 w-4" />
+                      )}
+                    </Button>
+                  </div>
+                  {password && (
+                    <div className="space-y-1">
+                      <div className="flex justify-between text-xs">
+                        <span>Password strength:</span>
+                        <span className="font-medium capitalize">{passwordStrength}</span>
+                      </div>
+                      <Progress value={getStrengthPercentage()} className={getStrengthColor()} />
+                    </div>
+                  )}
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="confirm-password">Confirm Password</Label>
-                  <Input
-                    id="confirm-password"
-                    type="password"
-                    placeholder="••••••••"
-                    value={confirmPassword}
-                    onChange={(e) => setConfirmPassword(e.target.value)}
-                    required
-                  />
+                  <div className="relative">
+                    <Input
+                      id="confirm-password"
+                      type={showConfirmPassword ? "text" : "password"}
+                      placeholder="••••••••"
+                      value={confirmPassword}
+                      onChange={(e) => setConfirmPassword(e.target.value)}
+                      required
+                    />
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      className="absolute right-0 top-0 h-10 w-10"
+                      onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                    >
+                      {showConfirmPassword ? (
+                        <EyeOff className="h-4 w-4" />
+                      ) : (
+                        <Eye className="h-4 w-4" />
+                      )}
+                    </Button>
+                  </div>
+                  {password && confirmPassword && password !== confirmPassword && (
+                    <p className="text-xs text-destructive">Passwords do not match</p>
+                  )}
                 </div>
               </>
             )}

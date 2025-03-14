@@ -3,21 +3,46 @@ import { createContext, useContext, useState, useEffect, ReactNode } from "react
 import { useNavigate } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
+import { validateRegisterNumber, validateCollegeDomainEmail } from "@/utils/validation";
 
 // Types
 type UserRole = "student" | "staff" | "admin";
+
 type User = { id: string; email: string; };
-type Profile = {
+
+interface ProfileBase {
   id: string;
   role: UserRole;
   full_name: string | null;
   email: string;
-  student_id?: string | null;
-  staff_id?: string | null;
-  admin_id?: string | null;
   phone?: string | null;
   avatar_url?: string | null;
-};
+  created_at?: string;
+  updated_at?: string;
+}
+
+interface StudentProfile extends ProfileBase {
+  role: "student";
+  student_id: string | null;
+  staff_id?: undefined;
+  admin_id?: undefined;
+}
+
+interface StaffProfile extends ProfileBase {
+  role: "staff";
+  student_id?: undefined;
+  staff_id: string | null;
+  admin_id?: undefined;
+}
+
+interface AdminProfile extends ProfileBase {
+  role: "admin";
+  student_id?: undefined;
+  staff_id?: undefined;
+  admin_id: string | null;
+}
+
+type Profile = StudentProfile | StaffProfile | AdminProfile;
 
 interface AuthContextType {
   user: User | null;
@@ -44,7 +69,7 @@ const MOCK_USERS = {
       role: "student" as UserRole,
       full_name: "Student User",
       email: "student@example.com",
-      student_id: "60821",
+      student_id: "2213141033127",
       phone: null,
       avatar_url: null,
     }
@@ -118,7 +143,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           
           if (savedEmail && savedRole && MOCK_USERS[savedRole]) {
             setUser(MOCK_USERS[savedRole]);
-            setProfile(MOCK_USERS[savedRole].profile);
+            setProfile(MOCK_USERS[savedRole].profile as Profile);
           }
         }
       } catch (error) {
@@ -148,19 +173,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           // Validate role-specific ID
           let idValid = false;
           
-          if (role === 'student' && roleData?.id) {
-            // Check if the profile has student_id property before accessing it
-            if (mockUser.profile && mockUser.profile.student_id === roleData.id) {
+          if (role === 'student') {
+            // For students, check if the ID matches the student_id
+            const studentProfile = mockUser.profile as StudentProfile;
+            if (studentProfile && studentProfile.student_id === roleData?.id) {
               idValid = true;
             }
-          } else if (role === 'staff' && roleData?.id) {
-            // Check if the profile has staff_id property before accessing it
-            if (mockUser.profile && mockUser.profile.staff_id === roleData.id) {
+          } else if (role === 'staff') {
+            // For staff, check if the ID matches the staff_id
+            const staffProfile = mockUser.profile as StaffProfile;
+            if (staffProfile && staffProfile.staff_id === roleData?.id) {
               idValid = true;
             }
-          } else if (role === 'admin' && roleData?.id) {
-            // Check if the profile has admin_id property before accessing it
-            if (mockUser.profile && mockUser.profile.admin_id === roleData.id) {
+          } else if (role === 'admin') {
+            // For admin, check if the ID matches the admin_id
+            const adminProfile = mockUser.profile as AdminProfile;
+            if (adminProfile && adminProfile.admin_id === roleData?.id) {
               idValid = true;
             }
           }
@@ -170,7 +198,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           }
           
           setUser(mockUser);
-          setProfile(mockUser.profile);
+          setProfile(mockUser.profile as Profile);
           
           // Save role and email to localStorage
           localStorage.setItem("userRole", role);
@@ -213,17 +241,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
               throw new Error(`This account is not registered as a ${roleData.role}`);
             }
             
-            // Validate ID based on role with type checking and optional chaining
+            // Validate ID based on role
             if (roleData.role === 'student') {
-              if (!profileData.student_id || profileData.student_id !== roleData.id) {
+              const studentProfile = profileData as StudentProfile;
+              if (!studentProfile.student_id || studentProfile.student_id !== roleData.id) {
                 throw new Error('Invalid Student ID');
               }
             } else if (roleData.role === 'staff') {
-              if (!profileData.staff_id || profileData.staff_id !== roleData.id) {
+              const staffProfile = profileData as StaffProfile;
+              if (!staffProfile.staff_id || staffProfile.staff_id !== roleData.id) {
                 throw new Error('Invalid Staff ID');
               }
             } else if (roleData.role === 'admin') {
-              if (!profileData.admin_id || profileData.admin_id !== roleData.id) {
+              const adminProfile = profileData as AdminProfile;
+              if (!adminProfile.admin_id || adminProfile.admin_id !== roleData.id) {
                 throw new Error('Invalid Admin ID');
               }
             }
@@ -259,40 +290,55 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       setLoading(true);
       
+      // Role-specific validations
+      if (role === 'student') {
+        if (!validateRegisterNumber(userData.id)) {
+          throw new Error("Invalid register number. Must be exactly 13 digits.");
+        }
+      } else {
+        // For staff and admin, validate college domain email
+        if (!validateCollegeDomainEmail(email)) {
+          throw new Error("Staff and admin must use a valid college domain email.");
+        }
+      }
+      
       if (process.env.NODE_ENV === 'development' && !import.meta.env.VITE_USE_SUPABASE) {
         // Simulate signup delay
         await new Promise(resolve => setTimeout(resolve, 1000));
-        
-        // For student role, validate student ID using the validateRegisterNumber function
-        if (role === 'student' && !/^\d{13}$/.test(userData.id)) {
-          throw new Error("Invalid register number. Must be exactly 13 digits.");
-        }
         
         // Create mock user with the selected role
         const mockUser = { ...MOCK_USERS[role] };
         mockUser.email = email;
         
-        // Update the appropriate ID field based on role
+        // Update the appropriate ID field and role-specific data
         if (role === 'student') {
-          if (mockUser.profile) {
-            mockUser.profile.student_id = userData.id;
-          }
+          mockUser.profile = {
+            ...mockUser.profile,
+            student_id: userData.id,
+            full_name: userData.fullName,
+            email: email,
+            role: 'student'
+          } as StudentProfile;
         } else if (role === 'staff') {
-          if (mockUser.profile) {
-            mockUser.profile.staff_id = userData.id;
-          }
+          mockUser.profile = {
+            ...mockUser.profile,
+            staff_id: userData.id,
+            full_name: userData.fullName,
+            email: email,
+            role: 'staff'
+          } as StaffProfile;
         } else if (role === 'admin') {
-          if (mockUser.profile) {
-            mockUser.profile.admin_id = userData.id;
-          }
-        }
-        
-        if (mockUser.profile) {
-          mockUser.profile.full_name = userData.fullName;
+          mockUser.profile = {
+            ...mockUser.profile,
+            admin_id: userData.id,
+            full_name: userData.fullName,
+            email: email,
+            role: 'admin'
+          } as AdminProfile;
         }
         
         setUser(mockUser);
-        setProfile(mockUser.profile);
+        setProfile(mockUser.profile as Profile);
         
         // Save role and email to localStorage
         localStorage.setItem("userRole", role);
@@ -362,8 +408,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           description: "Check your email for the password reset link.",
         });
         
-        // Navigate to login page
-        navigate("/auth/login");
+        // Navigate to login page after delay
+        setTimeout(() => {
+          navigate("/auth/login");
+        }, 2000);
       } else {
         // Real Supabase reset password
         const { error } = await supabase.auth.resetPasswordForEmail(email, {
@@ -376,9 +424,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           title: "Reset link sent",
           description: "Check your email for the password reset link.",
         });
-        
-        // Navigate to login page
-        navigate("/auth/login");
       }
     } catch (error: any) {
       console.error("Reset password error:", error);

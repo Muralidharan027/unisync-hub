@@ -14,7 +14,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
-import { Loader2, LogIn } from 'lucide-react';
+import { Loader2, LogIn, Eye, EyeOff } from 'lucide-react';
 import { 
   Select, 
   SelectContent, 
@@ -22,7 +22,7 @@ import {
   SelectTrigger, 
   SelectValue 
 } from "@/components/ui/select";
-import { validateRegisterNumber } from '@/utils/validation';
+import { validateRegisterNumber, validateEmail } from '@/utils/validation';
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
@@ -30,6 +30,7 @@ export default function LoginPage() {
   const [role, setRole] = useState<'student' | 'staff' | 'admin'>('student');
   const [id, setId] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
   const { toast } = useToast();
   const { signIn, loading } = useAuth();
   const navigate = useNavigate();
@@ -54,6 +55,17 @@ export default function LoginPage() {
         title: "Invalid Register Number",
         description: "Register Number must be exactly 13 digits",
         variant: "destructive",
+      });
+      setIsSubmitting(false);
+      return;
+    }
+
+    // Email validation
+    if (!validateEmail(email)) {
+      toast({
+        title: "Invalid Email",
+        description: "Please enter a valid email address",
+        variant: "destructive", 
       });
       setIsSubmitting(false);
       return;
@@ -137,14 +149,29 @@ export default function LoginPage() {
             {role !== 'student' && (
               <div className="space-y-2">
                 <Label htmlFor="password">Password</Label>
-                <Input
-                  id="password"
-                  type="password"
-                  placeholder="••••••••"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  required
-                />
+                <div className="relative">
+                  <Input
+                    id="password"
+                    type={showPassword ? "text" : "password"}
+                    placeholder="••••••••"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    required
+                  />
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    className="absolute right-0 top-0 h-10 w-10"
+                    onClick={() => setShowPassword(!showPassword)}
+                  >
+                    {showPassword ? (
+                      <EyeOff className="h-4 w-4" />
+                    ) : (
+                      <Eye className="h-4 w-4" />
+                    )}
+                  </Button>
+                </div>
                 <div className="text-right">
                   <Link 
                     to="/auth/forgot-password" 

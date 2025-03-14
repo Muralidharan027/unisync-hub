@@ -13,8 +13,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
-import { Loader2 } from 'lucide-react';
-import { validateRegisterNumber } from '@/utils/validation';
+import { Loader2, Eye, EyeOff } from 'lucide-react';
+import { validateRegisterNumber, validateEmail } from '@/utils/validation';
 import { Link } from 'react-router-dom';
 
 type LoginFormProps = {
@@ -25,6 +25,7 @@ export default function LoginForm({ role }: LoginFormProps) {
   const [email, setEmail] = useState('');
   const [id, setId] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { toast } = useToast();
   const { signIn, loading } = useAuth();
@@ -38,6 +39,17 @@ export default function LoginForm({ role }: LoginFormProps) {
       toast({
         title: "Missing information",
         description: "Please fill in all fields",
+        variant: "destructive",
+      });
+      setIsSubmitting(false);
+      return;
+    }
+
+    // Email validation
+    if (!validateEmail(email)) {
+      toast({
+        title: "Invalid Email",
+        description: "Please enter a valid email address",
         variant: "destructive",
       });
       setIsSubmitting(false);
@@ -121,14 +133,29 @@ export default function LoginForm({ role }: LoginFormProps) {
             {role !== 'student' && (
               <div className="space-y-2">
                 <Label htmlFor="password">Password</Label>
-                <Input
-                  id="password"
-                  type="password"
-                  placeholder="••••••••"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  required
-                />
+                <div className="relative">
+                  <Input
+                    id="password"
+                    type={showPassword ? "text" : "password"}
+                    placeholder="••••••••"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    required
+                  />
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    className="absolute right-0 top-0 h-10 w-10"
+                    onClick={() => setShowPassword(!showPassword)}
+                  >
+                    {showPassword ? (
+                      <EyeOff className="h-4 w-4" />
+                    ) : (
+                      <Eye className="h-4 w-4" />
+                    )}
+                  </Button>
+                </div>
                 <div className="text-right">
                   <Link 
                     to="/auth/forgot-password" 

@@ -99,6 +99,9 @@ export default function ForgotPasswordPage() {
                   onChange={(e) => setEmail(e.target.value)}
                   required
                 />
+                <p className="text-xs text-muted-foreground">
+                  We'll send a password reset link to this email address.
+                </p>
               </div>
             </CardContent>
             <CardFooter className="flex flex-col space-y-4">
