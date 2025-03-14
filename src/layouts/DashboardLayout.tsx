@@ -1,4 +1,3 @@
-
 import { ReactNode } from 'react';
 import { Bell, Home, LogOut, Settings, User } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
@@ -60,33 +59,32 @@ const DashboardLayout = ({ children, role }: DashboardLayoutProps) => {
     <ProtectedRoute role={role}>
       <div className="flex min-h-screen flex-col">
         <header className="border-b bg-white dark:bg-gray-800">
-          <div className="flex h-16 items-center justify-between px-4">
-            <div className="flex items-center">
-              <Link to={`/${role}/dashboard`} className="font-semibold text-lg mr-3">
-                UniSync
+          <div className="flex h-16 items-center px-4">
+            <Link to={`/${role}/dashboard`} className="font-semibold text-lg">
+              UniSync
+            </Link>
+            
+            <Badge className={`ml-3 ${getRoleBadgeColor(role)}`}>
+              {getRoleDisplayText(role)}
+            </Badge>
+            
+            {/* Universal Home Button - More prominent */}
+            <Button 
+              variant="default" 
+              size="sm" 
+              className="ml-4" 
+              asChild
+            >
+              <Link to={`/${role}/dashboard`}>
+                <Home className="mr-2 h-4 w-4" />
+                Home
               </Link>
-              
-              <Badge className={`${getRoleBadgeColor(role)} mr-4`}>
-                {getRoleDisplayText(role)}
-              </Badge>
-              
-              {/* Universal Home Button */}
-              <Button 
-                variant="default" 
-                size="sm" 
-                asChild
-              >
-                <Link to={`/${role}/dashboard`}>
-                  <Home className="mr-2 h-4 w-4" />
-                  Home
-                </Link>
-              </Button>
-            </div>
+            </Button>
             
             <div className="flex items-center gap-4">
-              <div className="flex items-center">
-                <span className="mr-4 text-sm font-medium">
-                  {profile?.full_name || 'User'}
+              <div className="hidden sm:flex">
+                <span className="px-3 py-1 text-xs font-medium rounded-full bg-primary/10 text-primary uppercase">
+                  {role}
                 </span>
               </div>
               <Button variant="ghost" size="icon" asChild>

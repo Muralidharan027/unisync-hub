@@ -1,4 +1,3 @@
-
 import { Bell, Calendar, FileClock, Users } from "lucide-react";
 import DashboardLayout from "@/layouts/DashboardLayout";
 import { Button } from "@/components/ui/button";
@@ -9,11 +8,8 @@ import { useEffect, useState } from "react";
 import { format } from "date-fns";
 import { LeaveRequest } from "@/components/leave/LeaveRequestCard";
 import { getAnnouncements } from "@/store/announcements";
-import { getLeaveRequests } from "@/store/leaveRequests";
-import { useAuth } from "@/contexts/AuthContext";
 
 export default function AdminDashboard() {
-  const { profile } = useAuth();
   const [stats, setStats] = useState([
     { title: "Total Students", value: "0", icon: <Users className="h-4 w-4" /> },
     { title: "Total Staff", value: "0", icon: <Users className="h-4 w-4" /> },
@@ -25,103 +21,71 @@ export default function AdminDashboard() {
   const [recentAnnouncements, setRecentAnnouncements] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Function to count unique student emails
-  const countUniqueStudents = () => {
-    const requests = getLeaveRequests();
-    const uniqueStudentEmails = new Set();
-    
-    requests.forEach(req => {
-      if (req.studentEmail) {
-        uniqueStudentEmails.add(req.studentEmail);
-      }
-    });
-    
-    return uniqueStudentEmails.size > 0 ? uniqueStudentEmails.size : 12; // Fallback to 12 if no real data
-  };
-
-  // Function to count unique staff emails (creators of announcements)
-  const countUniqueStaff = () => {
-    const announcements = getAnnouncements();
-    const uniqueStaffEmails = new Set();
-    
-    announcements.forEach(ann => {
-      if (ann.authorEmail && ann.authorEmail !== profile?.email) {
-        uniqueStaffEmails.add(ann.authorEmail);
-      }
-    });
-    
-    return uniqueStaffEmails.size > 0 ? uniqueStaffEmails.size : 5; // Fallback to 5 if no real data
-  };
-
   useEffect(() => {
     setIsLoading(true);
     
     // For the purpose of demo, use timeouts to simulate loading
     setTimeout(() => {
-      const leaveRequests = getLeaveRequests();
       // Calculate stats
-      const pendingCount = leaveRequests.filter(req => 
-        req.status === "pending" || req.status === "acknowledged"
-      ).length;
+      const pendingCount = window.globalLeaveRequests ? 
+        window.globalLeaveRequests.filter(req => req.status === "pending" || req.status === "acknowledged").length : 0;
       
       const announcements = getAnnouncements();
-      const totalStudents = countUniqueStudents();
-      const totalStaff = countUniqueStaff();
       
       setStats([
-        { title: "Total Students", value: totalStudents.toString(), icon: <Users className="h-4 w-4" /> },
-        { title: "Total Staff", value: totalStaff.toString(), icon: <Users className="h-4 w-4" /> },
+        { title: "Total Students", value: "45", icon: <Users className="h-4 w-4" /> },
+        { title: "Total Staff", value: "12", icon: <Users className="h-4 w-4" /> },
         { title: "Pending Requests", value: pendingCount.toString(), icon: <FileClock className="h-4 w-4" /> },
         { title: "Total Announcements", value: announcements.length.toString(), icon: <Bell className="h-4 w-4" /> },
       ]);
       
       // Get pending requests
-      const pendingReqs = leaveRequests
-        .filter(req => req.status === "pending" || req.status === "acknowledged")
-        .slice(0, 3);
-      
-      setPendingRequests(pendingReqs);
+      if (window.globalLeaveRequests) {
+        const pendingReqs = window.globalLeaveRequests
+          .filter(req => req.status === "pending" || req.status === "acknowledged")
+          .slice(0, 3);
+        
+        setPendingRequests(pendingReqs);
+      }
       
       // Get recent announcements
       setRecentAnnouncements(announcements.slice(0, 3));
       
       setIsLoading(false);
     }, 1000);
-  }, [profile?.email]);
+  }, []);
   
   // Subscribe to updates
   useEffect(() => {
     const interval = setInterval(() => {
-      const leaveRequests = getLeaveRequests();
       // Update stats for real-time changes
-      const pendingCount = leaveRequests.filter(req => 
-        req.status === "pending" || req.status === "acknowledged"
-      ).length;
+      const pendingCount = window.globalLeaveRequests ? 
+        window.globalLeaveRequests.filter(req => req.status === "pending" || req.status === "acknowledged").length : 0;
       
       const announcements = getAnnouncements();
-      const totalStudents = countUniqueStudents();
-      const totalStaff = countUniqueStaff();
       
       setStats(prev => [
-        { ...prev[0], value: totalStudents.toString() }, 
-        { ...prev[1], value: totalStaff.toString() },
+        prev[0], 
+        prev[1],
         { ...prev[2], value: pendingCount.toString() },
         { ...prev[3], value: announcements.length.toString() }
       ]);
       
       // Update pending requests
-      const pendingReqs = leaveRequests
-        .filter(req => req.status === "pending" || req.status === "acknowledged")
-        .slice(0, 3);
-      
-      setPendingRequests(pendingReqs);
+      if (window.globalLeaveRequests) {
+        const pendingReqs = window.globalLeaveRequests
+          .filter(req => req.status === "pending" || req.status === "acknowledged")
+          .slice(0, 3);
+        
+        setPendingRequests(pendingReqs);
+      }
       
       // Update recent announcements
       setRecentAnnouncements(announcements.slice(0, 3));
     }, 5000);
     
     return () => clearInterval(interval);
-  }, [profile?.email]);
+  }, []);
 
   return (
     <DashboardLayout role="admin">

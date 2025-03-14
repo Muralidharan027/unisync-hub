@@ -61,18 +61,6 @@ export default function LoginForm({ role }: LoginFormProps) {
         return 'Admin Code';
     }
   };
-  
-  // Set default email based on role
-  const getDefaultEmail = () => {
-    switch (role) {
-      case 'student':
-        return 'student@example.com';
-      case 'staff':
-        return 'staff@example.com';
-      case 'admin':
-        return 'admin@example.com';
-    }
-  };
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900 p-4">
@@ -90,14 +78,11 @@ export default function LoginForm({ role }: LoginFormProps) {
               <Input
                 id="email"
                 type="email"
-                placeholder={getDefaultEmail()}
+                placeholder={`${role}@example.com`}
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
               />
-              <p className="text-xs text-muted-foreground">
-                For demo: use {getDefaultEmail()}
-              </p>
             </div>
             <div className="space-y-2">
               <Label htmlFor="id">{getIdLabel()}</Label>
@@ -109,9 +94,6 @@ export default function LoginForm({ role }: LoginFormProps) {
                 onChange={(e) => setId(e.target.value)}
                 required
               />
-              <p className="text-xs text-muted-foreground">
-                For demo: use any password
-              </p>
             </div>
           </CardContent>
           <CardFooter>

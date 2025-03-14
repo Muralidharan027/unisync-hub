@@ -1,143 +1,272 @@
 
-import { useState, useEffect } from "react";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { useToast } from "@/hooks/use-toast";
-import { useAuth } from "@/contexts/AuthContext";
-import { Switch } from "@/components/ui/switch";
+import React, { useState, useEffect } from 'react';
+import { User } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
+import { useAuth } from '@/contexts/AuthContext';
+import { supabase } from '@/integrations/supabase/client';
+import { useToast } from '@/hooks/use-toast';
+import { Switch } from '@/components/ui/switch';
 
-export default function ProfileSettings() {
+type ProfileSettingsProps = {
+  role: 'student' | 'staff' | 'admin';
+};
+
+export default function ProfileSettings({ role }: ProfileSettingsProps) {
+  const { profile, user } = useAuth();
   const { toast } = useToast();
-  const { profile, updateProfile } = useAuth();
-  const [fullName, setFullName] = useState("");
-  const [phone, setPhone] = useState("");
-  const [email, setEmail] = useState("");
-  const [dataPersistence, setDataPersistence] = useState(false);
-  const [isSaving, setIsSaving] = useState(false);
+  const [loading, setLoading] = useState(false);
+  
+  const [formData, setFormData] = useState({
+    name: '',
+    email: '',
+    phone: '',
+    profilePicture: '',
+    id: '',
+  });
+
+  const [persistData, setPersistData] = useState(() => {
+    return localStorage.getItem('persistUserData') === 'true';
+  });
 
   useEffect(() => {
     if (profile) {
-      setFullName(profile.full_name || "");
-      setPhone(profile.phone || "");
-      setEmail(profile.email || "");
+      setFormData({
+        name: profile.full_name || '',
+        email: profile.email || '',
+        phone: profile.phone || '',
+        profilePicture: profile.avatar_url || '',
+        id: profile.student_id || profile.staff_id || profile.admin_id || '',
+      });
     }
-    
-    // Load data persistence setting
-    const persistenceEnabled = localStorage.getItem("dataPersistenceEnabled");
-    setDataPersistence(persistenceEnabled === "true");
   }, [profile]);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setIsSaving(true);
-
-    try {
-      await updateProfile({
-        full_name: fullName,
-        phone,
-        email
-      });
-      
-      toast({
-        title: "Profile updated",
-        description: "Your profile information has been saved."
-      });
-    } catch (error) {
-      console.error(error);
-      toast({
-        title: "Update failed",
-        description: "There was a problem updating your profile.",
-        variant: "destructive"
-      });
-    } finally {
-      setIsSaving(false);
-    }
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({ ...prev, [name]: value }));
   };
-  
-  const handleDataPersistenceChange = (checked: boolean) => {
-    setDataPersistence(checked);
-    localStorage.setItem("dataPersistenceEnabled", checked.toString());
+
+  const handlePersistDataToggle = (checked: boolean) => {
+    setPersistData(checked);
+    localStorage.setItem('persistUserData', checked.toString());
     
     toast({
       title: checked ? "Data persistence enabled" : "Data persistence disabled",
       description: checked 
-        ? "Your data will be saved between sessions" 
-        : "Your data will be cleared after logging out"
+        ? "Your data will now be saved between sessions" 
+        : "Your data will no longer be saved between sessions",
     });
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    
+    try {
+      if (!user || !profile) {
+        throw new Error('User is not authenticated');
+      }
+      
+      // In our mock auth system, we won't actually update Supabase
+      // This is just a placeholder for when we have real authentication
+      console.log('Would update profile with:', {
+        full_name: formData.name,
+        email: formData.email,
+        phone: formData.phone,
+        id_field: formData.id,
+      });
+      
+      // Since we're using mock data, we'll just show a success message
+      toast({
+        title: 'Profile updated',
+        description: 'Your profile has been updated successfully',
+      });
+    } catch (error: any) {
+      console.error('Error updating profile:', error);
+      toast({
+        title: 'Error updating profile',
+        description: error.message || 'An error occurred while updating your profile',
+        variant: 'destructive',
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleProfilePictureChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !user) return;
+    
+    setLoading(true);
+    
+    try {
+      // Since we're using mock data, we'll just simulate a file upload
+      console.log('Would upload file:', file.name);
+      
+      // Update local state with a fake URL to simulate the upload
+      const fakeUrl = URL.createObjectURL(file);
+      setFormData(prev => ({ ...prev, profilePicture: fakeUrl }));
+      
+      toast({
+        title: 'Profile picture updated',
+        description: 'Your profile picture has been updated successfully',
+      });
+    } catch (error: any) {
+      console.error('Error updating profile picture:', error);
+      toast({
+        title: 'Error updating profile picture',
+        description: error.message || 'An error occurred while updating your profile picture',
+        variant: 'destructive',
+      });
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
     <div className="space-y-6">
-      <Card>
-        <CardHeader>
-          <CardTitle>Personal Information</CardTitle>
-          <CardDescription>
-            Update your personal details
-          </CardDescription>
-        </CardHeader>
-        <form onSubmit={handleSubmit}>
-          <CardContent className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="fullName">Full Name</Label>
-              <Input
-                id="fullName"
-                value={fullName}
-                onChange={(e) => setFullName(e.target.value)}
-                placeholder="Your full name"
-              />
+      <div>
+        <h3 className="text-lg font-medium">Profile</h3>
+        <p className="text-sm text-muted-foreground">
+          Manage your personal information and account settings.
+        </p>
+      </div>
+      
+      <form onSubmit={handleSubmit}>
+        <Card>
+          <CardHeader>
+            <CardTitle>Personal Information</CardTitle>
+            <CardDescription>
+              Update your personal details and how others see you on the platform.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            <div className="flex flex-col items-center space-y-4 sm:flex-row sm:space-y-0 sm:space-x-4">
+              <div className="relative">
+                <Avatar className="h-24 w-24">
+                  {formData.profilePicture ? (
+                    <AvatarImage src={formData.profilePicture} alt={formData.name} />
+                  ) : (
+                    <AvatarFallback className="text-lg">
+                      {formData.name.split(' ').map(n => n[0]).join('')}
+                    </AvatarFallback>
+                  )}
+                </Avatar>
+                <label 
+                  htmlFor="profile-picture" 
+                  className="absolute -bottom-2 -right-2 flex h-8 w-8 cursor-pointer items-center justify-center rounded-full bg-primary text-primary-foreground shadow-sm hover:bg-primary/90"
+                >
+                  <User className="h-4 w-4" />
+                  <span className="sr-only">Change profile picture</span>
+                  <input
+                    id="profile-picture"
+                    type="file"
+                    className="hidden"
+                    accept="image/*"
+                    onChange={handleProfilePictureChange}
+                  />
+                </label>
+              </div>
+              <div className="space-y-1 text-center sm:text-left">
+                <p className="text-lg font-medium">{formData.name || 'User'}</p>
+                <p className="text-sm text-muted-foreground">{formData.email}</p>
+                <p className="text-xs text-muted-foreground">{role.charAt(0).toUpperCase() + role.slice(1)} • {formData.id || 'No ID set'}</p>
+              </div>
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
-              <Input
-                id="email"
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="Your email address"
-              />
+
+            <div className="grid gap-4 md:grid-cols-2">
+              <div className="space-y-2">
+                <Label htmlFor="name">Full Name</Label>
+                <Input 
+                  id="name" 
+                  name="name" 
+                  value={formData.name} 
+                  onChange={handleChange} 
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="email">Email Address</Label>
+                <Input 
+                  id="email" 
+                  name="email" 
+                  value={formData.email} 
+                  onChange={handleChange} 
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="phone">Phone Number</Label>
+                <Input 
+                  id="phone" 
+                  name="phone" 
+                  value={formData.phone} 
+                  onChange={handleChange} 
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="id">{role === 'student' ? 'Student' : role === 'staff' ? 'Staff' : 'Admin'} ID</Label>
+                <Input 
+                  id="id" 
+                  name="id" 
+                  value={formData.id} 
+                  onChange={handleChange} 
+                  disabled={role === 'student' && !!formData.id} 
+                  className={role === 'student' && !!formData.id ? "bg-muted" : ""}
+                />
+                {role === 'student' && !!formData.id && (
+                  <p className="text-xs text-muted-foreground">Student ID cannot be changed once set.</p>
+                )}
+              </div>
             </div>
+
             <div className="space-y-2">
-              <Label htmlFor="phone">Phone</Label>
-              <Input
-                id="phone"
-                value={phone}
-                onChange={(e) => setPhone(e.target.value)}
-                placeholder="Your phone number"
-              />
+              <div className="flex items-center justify-between">
+                <div>
+                  <Label htmlFor="persist-data">Data Persistence</Label>
+                  <p className="text-sm text-muted-foreground">Keep your data synced between sessions</p>
+                </div>
+                <Switch 
+                  id="persist-data" 
+                  checked={persistData} 
+                  onCheckedChange={handlePersistDataToggle}
+                />
+              </div>
             </div>
           </CardContent>
           <CardFooter>
-            <Button type="submit" disabled={isSaving}>
-              {isSaving ? "Saving..." : "Save Changes"}
+            <Button type="submit" disabled={loading}>
+              {loading ? 'Saving...' : 'Save Changes'}
             </Button>
           </CardFooter>
-        </form>
-      </Card>
-      
+        </Card>
+      </form>
+
       <Card>
         <CardHeader>
-          <CardTitle>Data Persistence</CardTitle>
+          <CardTitle>Change Password</CardTitle>
           <CardDescription>
-            Control how your data is stored between sessions
+            Update your password to keep your account secure.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="flex items-center justify-between">
-            <div className="space-y-0.5">
-              <Label htmlFor="dataPersistence">Keep data after logout</Label>
-              <p className="text-sm text-muted-foreground">
-                Announcements and leave requests will be saved even when you log out
-              </p>
-            </div>
-            <Switch
-              id="dataPersistence"
-              checked={dataPersistence}
-              onCheckedChange={handleDataPersistenceChange}
-            />
+          <div className="space-y-2">
+            <Label htmlFor="current-password">Current Password</Label>
+            <Input id="current-password" type="password" />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="new-password">New Password</Label>
+            <Input id="new-password" type="password" />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="confirm-password">Confirm New Password</Label>
+            <Input id="confirm-password" type="password" />
           </div>
         </CardContent>
+        <CardFooter>
+          <Button>Update Password</Button>
+        </CardFooter>
       </Card>
     </div>
   );

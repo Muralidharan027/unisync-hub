@@ -59,10 +59,3 @@ const saveLeaveRequests = (): void => {
     localStorage.setItem('leaveRequests', JSON.stringify(window.globalLeaveRequests));
   }
 };
-
-// Type declaration for Window interface
-declare global {
-  interface Window {
-    globalLeaveRequests: LeaveRequest[];
-  }
-}
