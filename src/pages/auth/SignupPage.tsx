@@ -82,10 +82,8 @@ export default function SignupPage() {
       }
       
       // For students, use the register number as the password
-      if (password !== id) {
-        setPassword(id);
-        setConfirmPassword(id);
-      }
+      setPassword(id);
+      setConfirmPassword(id);
     } else {
       // Password validation for non-student roles
       if (!password || !confirmPassword) {
@@ -123,7 +121,7 @@ export default function SignupPage() {
     if (role === 'student' && !validateStudentId(id)) {
       toast({
         title: "Invalid Student ID",
-        description: "Please enter a valid student ID",
+        description: "Please enter a valid student ID. Valid IDs: 60821-60830",
         variant: "destructive",
       });
       setIsSubmitting(false);

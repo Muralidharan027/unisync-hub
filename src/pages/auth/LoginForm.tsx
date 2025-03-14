@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -14,7 +14,7 @@ import { Label } from "@/components/ui/label";
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { Loader2 } from 'lucide-react';
-import { validateStudentId, validateRegisterNumber } from '@/utils/validation';
+import { validateRegisterNumber } from '@/utils/validation';
 import { Link } from 'react-router-dom';
 
 type LoginFormProps = {
@@ -24,6 +24,7 @@ type LoginFormProps = {
 export default function LoginForm({ role }: LoginFormProps) {
   const [email, setEmail] = useState('');
   const [id, setId] = useState('');
+  const [password, setPassword] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { toast } = useToast();
   const { signIn, loading } = useAuth();
@@ -33,7 +34,7 @@ export default function LoginForm({ role }: LoginFormProps) {
     setIsSubmitting(true);
     
     // Form validation
-    if (!email || !id) {
+    if (!email || !id || (role !== 'student' && !password)) {
       toast({
         title: "Missing information",
         description: "Please fill in all fields",
@@ -59,14 +60,11 @@ export default function LoginForm({ role }: LoginFormProps) {
     try {
       // Call signIn with role-specific data
       // For students, use the register number as the password
-      await signIn(email, id, { role, id });
+      const finalPassword = role === 'student' ? id : password;
+      await signIn(email, finalPassword, { role, id });
     } catch (error: any) {
       console.error("Login error:", error);
-      toast({
-        title: "Login failed",
-        description: error.message || "Please check your credentials and try again.",
-        variant: "destructive",
-      });
+      // Error handling is done in the signIn function
     } finally {
       setIsSubmitting(false);
     }
@@ -126,6 +124,8 @@ export default function LoginForm({ role }: LoginFormProps) {
                   id="password"
                   type="password"
                   placeholder="••••••••"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
                   required
                 />
               </div>

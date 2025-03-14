@@ -1,4 +1,3 @@
-
 import { createContext, useContext, useState, useEffect, ReactNode } from "react";
 import { useNavigate } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
@@ -12,7 +11,6 @@ type Profile = {
   role: UserRole;
   full_name: string | null;
   email: string;
-  // Make all role-specific IDs optional but available on all profiles
   student_id?: string | null;
   staff_id?: string | null;
   admin_id?: string | null;
@@ -154,18 +152,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           let idValid = false;
           
           if (role === 'student' && roleData?.id) {
-            // Safe check for student_id property
-            if (mockUser.profile.student_id === roleData.id) {
+            // Use optional chaining to safely access student_id
+            if (mockUser.profile?.student_id === roleData.id) {
               idValid = true;
             }
           } else if (role === 'staff' && roleData?.id) {
-            // Safe check for staff_id property
-            if (mockUser.profile.staff_id === roleData.id) {
+            // Use optional chaining to safely access staff_id
+            if (mockUser.profile?.staff_id === roleData.id) {
               idValid = true;
             }
           } else if (role === 'admin' && roleData?.id) {
-            // Safe check for admin_id property
-            if (mockUser.profile.admin_id === roleData.id) {
+            // Use optional chaining to safely access admin_id
+            if (mockUser.profile?.admin_id === roleData.id) {
               idValid = true;
             }
           }
@@ -281,18 +279,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         mockUser.email = email;
         
         // Update the appropriate ID field based on role
-        if (role === 'student') {
-          if (mockUser.profile) {
-            mockUser.profile.student_id = userData.id;
-          }
-        } else if (role === 'staff') {
-          if (mockUser.profile) {
-            mockUser.profile.staff_id = userData.id;
-          }
-        } else if (role === 'admin') {
-          if (mockUser.profile) {
-            mockUser.profile.admin_id = userData.id;
-          }
+        if (role === 'student' && mockUser.profile) {
+          mockUser.profile.student_id = userData.id;
+        } else if (role === 'staff' && mockUser.profile) {
+          mockUser.profile.staff_id = userData.id;
+        } else if (role === 'admin' && mockUser.profile) {
+          mockUser.profile.admin_id = userData.id;
         }
         
         if (mockUser.profile) {
