@@ -1,14 +1,12 @@
 
-import { VALID_STUDENT_IDS } from "@/contexts/AuthContext";
-
 /**
- * Validates a student ID against the list of valid student IDs
- * @param studentId The student ID to validate
- * @returns true if the ID is valid, false otherwise
+ * Validates a student register number
+ * @param registerNumber The register number to validate
+ * @returns true if the register number is valid (exactly 13 digits), false otherwise
  */
-export const validateStudentId = (studentId: string): boolean => {
-  // Accept any 13-digit number as valid (this replaces the VALID_STUDENT_IDS check)
-  return /^\d{13}$/.test(studentId);
+export const validateRegisterNumber = (registerNumber: string): boolean => {
+  // Register number must be exactly 13 digits
+  return /^\d{13}$/.test(registerNumber);
 };
 
 /**
@@ -32,11 +30,33 @@ export const validatePassword = (password: string): boolean => {
 };
 
 /**
- * Validates a student register number
- * @param registerNumber The register number to validate
- * @returns true if the register number is valid (exactly 13 digits), false otherwise
+ * Validates a student ID against the list of valid student IDs
+ * @param studentId The student ID to validate
+ * @returns true if the ID is valid, false otherwise
  */
-export const validateRegisterNumber = (registerNumber: string): boolean => {
-  // Register number must be exactly 13 digits
-  return /^\d{13}$/.test(registerNumber);
+export const validateStudentId = (studentId: string): boolean => {
+  // Accept any 13-digit number as valid
+  return /^\d{13}$/.test(studentId);
+};
+
+/**
+ * Calculate password strength
+ * @param password The password to evaluate
+ * @returns 'weak' | 'medium' | 'strong' based on password complexity
+ */
+export const calculatePasswordStrength = (password: string): 'weak' | 'medium' | 'strong' => {
+  if (password.length < 6) return 'weak';
+  
+  // Check for complexity (numbers, special chars, mixed case)
+  const hasNumbers = /\d/.test(password);
+  const hasSpecialChars = /[!@#$%^&*(),.?":{}|<>]/.test(password);
+  const hasMixedCase = /[a-z]/.test(password) && /[A-Z]/.test(password);
+  
+  if (hasNumbers && hasSpecialChars && hasMixedCase && password.length >= 8) {
+    return 'strong';
+  } else if ((hasNumbers || hasSpecialChars) && password.length >= 6) {
+    return 'medium';
+  }
+  
+  return 'weak';
 };

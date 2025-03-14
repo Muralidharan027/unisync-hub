@@ -129,6 +129,14 @@ export default function LoginForm({ role }: LoginFormProps) {
                   onChange={(e) => setPassword(e.target.value)}
                   required
                 />
+                <div className="text-right">
+                  <Link 
+                    to="/auth/forgot-password" 
+                    className="text-sm text-primary hover:underline"
+                  >
+                    Forgot password?
+                  </Link>
+                </div>
               </div>
             )}
           </CardContent>
@@ -143,9 +151,12 @@ export default function LoginForm({ role }: LoginFormProps) {
                 "Login"
               )}
             </Button>
-            <div className="mt-4 text-center text-sm">
-              <Link to="/auth/login" className="text-blue-500 hover:underline">
+            <div className="mt-4 text-center text-sm space-y-2">
+              <Link to="/auth/login" className="text-blue-500 hover:underline block">
                 Switch to another role
+              </Link>
+              <Link to="/auth/signup" className="text-primary hover:underline block">
+                Don't have an account? Sign up
               </Link>
             </div>
           </CardFooter>

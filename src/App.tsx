@@ -1,4 +1,3 @@
-
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -8,6 +7,8 @@ import RoleSelection from "./pages/auth/RoleSelection";
 import LoginPage from "./pages/auth/LoginPage";
 import RoleLoginPage from "./pages/auth/RoleLoginPage";
 import SignupPage from "./pages/auth/SignupPage";
+import ForgotPasswordPage from "./pages/auth/ForgotPasswordPage";
+import ResetPasswordPage from "./pages/auth/ResetPasswordPage";
 import { AuthProvider } from "./contexts/AuthContext";
 import ProtectedRoute from "./components/auth/ProtectedRoute";
 
@@ -45,6 +46,8 @@ const App = () => (
             <Route path="/auth/login" element={<LoginPage />} />
             <Route path="/auth/:role/login" element={<RoleLoginPage />} />
             <Route path="/auth/signup" element={<SignupPage />} />
+            <Route path="/auth/forgot-password" element={<ForgotPasswordPage />} />
+            <Route path="/auth/reset-password" element={<ResetPasswordPage />} />
             
             {/* Student Routes */}
             <Route 

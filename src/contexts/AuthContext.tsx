@@ -19,11 +19,20 @@ type Profile = {
   avatar_url?: string | null;
 };
 
-// Valid student IDs - no longer used as we now validate 13-digit numbers directly
-export const VALID_STUDENT_IDS = [
-  "60821", "60822", "60823", "60824", "60825", 
-  "60826", "60827", "60828", "60829", "60830"
-];
+interface AuthContextType {
+  user: User | null;
+  profile: Profile | null;
+  loading: boolean;
+  signIn: (email: string, password: string, roleData?: { role: UserRole; id: string }) => Promise<void>;
+  signUp: (email: string, password: string, role: UserRole, userData: { fullName: string; id: string }) => Promise<void>;
+  signOut: () => Promise<void>;
+  validateStudentId: (studentId: string) => boolean;
+  resetPassword: (email: string) => Promise<void>;
+  updatePassword: (password: string) => Promise<void>;
+}
+
+// Create context
+const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 // Mock user data for different roles
 const MOCK_USERS = {
@@ -67,19 +76,6 @@ const MOCK_USERS = {
     }
   }
 };
-
-interface AuthContextType {
-  user: User | null;
-  profile: Profile | null;
-  loading: boolean;
-  signIn: (email: string, password: string, roleData?: { role: UserRole; id: string }) => Promise<void>;
-  signUp: (email: string, password: string, role: UserRole, userData: { fullName: string; id: string }) => Promise<void>;
-  signOut: () => Promise<void>;
-  validateStudentId: (studentId: string) => boolean;
-}
-
-// Create context
-const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 // Provider component
 export function AuthProvider({ children }: { children: ReactNode }) {
@@ -154,17 +150,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           
           if (role === 'student' && roleData?.id) {
             // Check if the profile has student_id property before accessing it
-            if (mockUser.profile && 'student_id' in mockUser.profile && mockUser.profile.student_id === roleData.id) {
+            if (mockUser.profile && mockUser.profile.student_id === roleData.id) {
               idValid = true;
             }
           } else if (role === 'staff' && roleData?.id) {
             // Check if the profile has staff_id property before accessing it
-            if (mockUser.profile && 'staff_id' in mockUser.profile && mockUser.profile.staff_id === roleData.id) {
+            if (mockUser.profile && mockUser.profile.staff_id === roleData.id) {
               idValid = true;
             }
           } else if (role === 'admin' && roleData?.id) {
             // Check if the profile has admin_id property before accessing it
-            if (mockUser.profile && 'admin_id' in mockUser.profile && mockUser.profile.admin_id === roleData.id) {
+            if (mockUser.profile && mockUser.profile.admin_id === roleData.id) {
               idValid = true;
             }
           }
@@ -217,7 +213,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
               throw new Error(`This account is not registered as a ${roleData.role}`);
             }
             
-            // Validate ID based on role with type checking
+            // Validate ID based on role with type checking and optional chaining
             if (roleData.role === 'student') {
               if (!profileData.student_id || profileData.student_id !== roleData.id) {
                 throw new Error('Invalid Student ID');
@@ -277,12 +273,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         mockUser.email = email;
         
         // Update the appropriate ID field based on role
-        if (role === 'student' && mockUser.profile) {
-          mockUser.profile.student_id = userData.id;
-        } else if (role === 'staff' && mockUser.profile) {
-          mockUser.profile.staff_id = userData.id;
-        } else if (role === 'admin' && mockUser.profile) {
-          mockUser.profile.admin_id = userData.id;
+        if (role === 'student') {
+          if (mockUser.profile) {
+            mockUser.profile.student_id = userData.id;
+          }
+        } else if (role === 'staff') {
+          if (mockUser.profile) {
+            mockUser.profile.staff_id = userData.id;
+          }
+        } else if (role === 'admin') {
+          if (mockUser.profile) {
+            mockUser.profile.admin_id = userData.id;
+          }
         }
         
         if (mockUser.profile) {
@@ -322,34 +324,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (error) throw error;
         
         if (data.user) {
-          setUser({ id: data.user.id, email: data.user.email || '' });
-          
-          // Create profile object from user metadata
-          const newProfile: Profile = {
-            id: data.user.id,
-            email: data.user.email || '',
-            full_name: userData.fullName,
-            role,
-          };
-          
-          // Set the appropriate ID field based on role
-          if (role === 'student') {
-            newProfile.student_id = userData.id;
-          } else if (role === 'staff') {
-            newProfile.staff_id = userData.id;
-          } else if (role === 'admin') {
-            newProfile.admin_id = userData.id;
-          }
-          
-          setProfile(newProfile);
-          
-          // Navigate to dashboard
-          navigate(`/${role}/dashboard`);
-          
+          // The profile will be created automatically by the database trigger
+          // Just show a success message
           toast({
             title: "Account created",
-            description: `Welcome to UniSync, ${userData.fullName}!`,
+            description: "Please check your email to verify your account.",
           });
+          
+          // Navigate to login page
+          navigate("/auth/login");
         }
       }
     } catch (error: any) {
@@ -365,9 +348,99 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  // Reset password function (forgot password)
+  const resetPassword = async (email: string) => {
+    try {
+      setLoading(true);
+      
+      if (process.env.NODE_ENV === 'development' && !import.meta.env.VITE_USE_SUPABASE) {
+        // Simulate reset password delay
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        
+        toast({
+          title: "Reset link sent",
+          description: "Check your email for the password reset link.",
+        });
+        
+        // Navigate to login page
+        navigate("/auth/login");
+      } else {
+        // Real Supabase reset password
+        const { error } = await supabase.auth.resetPasswordForEmail(email, {
+          redirectTo: window.location.origin + '/auth/reset-password',
+        });
+        
+        if (error) throw error;
+        
+        toast({
+          title: "Reset link sent",
+          description: "Check your email for the password reset link.",
+        });
+        
+        // Navigate to login page
+        navigate("/auth/login");
+      }
+    } catch (error: any) {
+      console.error("Reset password error:", error);
+      toast({
+        title: "Reset password failed",
+        description: error.message || "An error occurred while sending the reset link.",
+        variant: "destructive",
+      });
+      throw error;
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Update password function (after reset)
+  const updatePassword = async (password: string) => {
+    try {
+      setLoading(true);
+      
+      if (process.env.NODE_ENV === 'development' && !import.meta.env.VITE_USE_SUPABASE) {
+        // Simulate update password delay
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        
+        toast({
+          title: "Password updated",
+          description: "Your password has been successfully updated.",
+        });
+        
+        // Navigate to login page
+        navigate("/auth/login");
+      } else {
+        // Real Supabase update password
+        const { error } = await supabase.auth.updateUser({
+          password,
+        });
+        
+        if (error) throw error;
+        
+        toast({
+          title: "Password updated",
+          description: "Your password has been successfully updated.",
+        });
+        
+        // Navigate to login page
+        navigate("/auth/login");
+      }
+    } catch (error: any) {
+      console.error("Update password error:", error);
+      toast({
+        title: "Update password failed",
+        description: error.message || "An error occurred while updating your password.",
+        variant: "destructive",
+      });
+      throw error;
+    } finally {
+      setLoading(false);
+    }
+  };
+
   // Validate student ID
   const validateStudentId = (studentId: string): boolean => {
-    // Change this to accept any 13-digit register number instead of using VALID_STUDENT_IDS
+    // Accept any 13-digit register number
     return /^\d{13}$/.test(studentId);
   };
 
@@ -418,6 +491,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       signIn, 
       signUp, 
       signOut,
+      resetPassword,
+      updatePassword,
       validateStudentId 
     }}>
       {children}
