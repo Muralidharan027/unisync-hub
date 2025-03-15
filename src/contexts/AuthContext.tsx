@@ -1,3 +1,4 @@
+
 import { createContext, useContext, useState, useEffect, ReactNode } from "react";
 import { useNavigate } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
@@ -77,12 +78,12 @@ const MOCK_USERS = {
   },
   staff: {
     id: "staff-123",
-    email: "staff@college.edu",
+    email: "staff@gurunanakcollege.edu.in",
     profile: {
       id: "staff-123",
       role: "staff" as UserRole,
       full_name: "Staff User",
-      email: "staff@college.edu",
+      email: "staff@gurunanakcollege.edu.in",
       student_id: null,
       staff_id: "STA001",
       admin_id: null,
@@ -92,12 +93,12 @@ const MOCK_USERS = {
   },
   admin: {
     id: "admin-123",
-    email: "admin@college.edu",
+    email: "admin@gurunanakcollege.edu.in",
     profile: {
       id: "admin-123",
       role: "admin" as UserRole,
       full_name: "Admin User",
-      email: "admin@college.edu",
+      email: "admin@gurunanakcollege.edu.in",
       student_id: null,
       staff_id: null,
       admin_id: "ADM001",
@@ -364,48 +365,49 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (error) throw error;
         
         if (data.user) {
-          // If not using email verification, create a session immediately
-          // Uncomment this if using no email verification in Supabase
-          /*
-          const { data: sessionData, error: sessionError } = await supabase.auth.signInWithPassword({
-            email,
-            password
-          });
+          console.log("User created successfully:", data.user);
           
-          if (sessionError) throw sessionError;
-          
-          if (sessionData.user) {
-            setUser({ id: sessionData.user.id, email: sessionData.user.email || '' });
+          // For development purposes, let's immediately sign in the user
+          if (process.env.NODE_ENV === 'development') {
+            const { data: sessionData, error: sessionError } = await supabase.auth.signInWithPassword({
+              email,
+              password
+            });
             
-            // Check for or create profile
-            const { data: profileData } = await supabase
-              .from('profiles')
-              .select('*')
-              .eq('id', sessionData.user.id)
-              .single();
+            if (sessionError) throw sessionError;
+            
+            if (sessionData.user) {
+              setUser({ id: sessionData.user.id, email: sessionData.user.email || '' });
               
-            if (profileData) {
-              setProfile(profileData as Profile);
-              
-              // Navigate to dashboard
-              navigate(`/${profileData.role}/dashboard`);
-              
-              toast({
-                title: "Account created & signed in",
-                description: `Welcome to UniSync, ${profileData.full_name}!`,
-              });
+              // Check for or create profile
+              const { data: profileData } = await supabase
+                .from('profiles')
+                .select('*')
+                .eq('id', sessionData.user.id)
+                .single();
+                
+              if (profileData) {
+                setProfile(profileData as Profile);
+                
+                // Navigate to dashboard
+                navigate(`/${profileData.role}/dashboard`);
+                
+                toast({
+                  title: "Account created & signed in",
+                  description: `Welcome to UniSync, ${profileData.full_name}!`,
+                });
+              }
             }
+          } else {
+            // Default behavior - show a success message and navigate to login
+            toast({
+              title: "Account created",
+              description: "Please check your email to verify your account.",
+            });
+            
+            // Navigate to login page
+            navigate("/auth/login");
           }
-          */
-          
-          // Default behavior - show a success message and navigate to login
-          toast({
-            title: "Account created",
-            description: "Please check your email to verify your account.",
-          });
-          
-          // Navigate to login page
-          navigate("/auth/login");
         }
       }
     } catch (error: any) {

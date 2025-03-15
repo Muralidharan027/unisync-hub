@@ -108,9 +108,9 @@ export default function LoginForm({ role }: LoginFormProps) {
       case 'student':
         return 'Enter your email or 13-digit register number';
       case 'staff':
-        return 'staff@gurunanakcollege.edu.in';
+        return 'name@gurunanakcollege.edu.in';
       case 'admin':
-        return 'admin@gurunanakcollege.edu.in';
+        return 'name@gurunanakcollege.edu.in';
     }
   };
 
