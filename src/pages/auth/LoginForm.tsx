@@ -14,7 +14,7 @@ import { Label } from "@/components/ui/label";
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { Loader2, Eye, EyeOff } from 'lucide-react';
-import { validateRegisterNumber, validateEmail } from '@/utils/validation';
+import { validateRegisterNumber, validateEmail, validateCollegeDomainEmail } from '@/utils/validation';
 import { Link } from 'react-router-dom';
 import { Checkbox } from "@/components/ui/checkbox";
 
@@ -70,11 +70,11 @@ export default function LoginForm({ role }: LoginFormProps) {
         return;
       }
     } else {
-      // For staff and admin, must be a valid email
-      if (!validateEmail(identifier)) {
+      // For staff and admin, must be a valid college email
+      if (!validateCollegeDomainEmail(identifier)) {
         toast({
-          title: "Invalid Email",
-          description: "Please enter a valid email address",
+          title: "Invalid College Email",
+          description: "Please enter a valid college domain email (e.g., name@gurunanakcollege.edu.in)",
           variant: "destructive",
         });
         setIsSubmitting(false);
@@ -108,9 +108,9 @@ export default function LoginForm({ role }: LoginFormProps) {
       case 'student':
         return 'Enter your email or 13-digit register number';
       case 'staff':
-        return 'staff@college.edu';
+        return 'staff@gurunanakcollege.edu.in';
       case 'admin':
-        return 'admin@college.edu';
+        return 'admin@gurunanakcollege.edu.in';
     }
   };
 
@@ -136,7 +136,7 @@ export default function LoginForm({ role }: LoginFormProps) {
                 required
               />
               {role === 'staff' || role === 'admin' ? (
-                <p className="text-xs text-gray-500">Must use a college domain email address</p>
+                <p className="text-xs text-gray-500">Must use a college domain email address (e.g., name@gurunanakcollege.edu.in)</p>
               ) : null}
             </div>
             <div className="space-y-2">

@@ -26,7 +26,10 @@ export const validateEmail = (email: string): boolean => {
  */
 export const validateCollegeDomainEmail = (email: string): boolean => {
   // Check for a valid email with college.edu domain
-  return validateEmail(email) && email.endsWith('@college.edu');
+  // Updated to match format like Sreepriya.s@gurunanakcollege.edu.in
+  return validateEmail(email) && 
+    (email.endsWith('@college.edu') || 
+     email.toLowerCase().endsWith('@gurunanakcollege.edu.in'));
 };
 
 /**
@@ -35,8 +38,8 @@ export const validateCollegeDomainEmail = (email: string): boolean => {
  * @returns true if the password meets minimum requirements, false otherwise
  */
 export const validatePassword = (password: string): boolean => {
-  // Minimum password length of 6 characters
-  return password.length >= 6;
+  // Minimum password length of 8 characters
+  return password.length >= 8;
 };
 
 /**
@@ -55,7 +58,7 @@ export const validateStudentId = (studentId: string): boolean => {
  * @returns 'weak' | 'medium' | 'strong' based on password complexity
  */
 export const calculatePasswordStrength = (password: string): 'weak' | 'medium' | 'strong' => {
-  if (password.length < 6) return 'weak';
+  if (password.length < 8) return 'weak';
   
   // Check for complexity (numbers, special chars, mixed case)
   const hasNumbers = /\d/.test(password);
@@ -64,7 +67,7 @@ export const calculatePasswordStrength = (password: string): 'weak' | 'medium' |
   
   if (hasNumbers && hasSpecialChars && hasMixedCase && password.length >= 8) {
     return 'strong';
-  } else if ((hasNumbers || hasSpecialChars) && password.length >= 6) {
+  } else if ((hasNumbers || hasSpecialChars) && password.length >= 8) {
     return 'medium';
   }
   

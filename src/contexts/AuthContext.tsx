@@ -1,4 +1,3 @@
-
 import { createContext, useContext, useState, useEffect, ReactNode } from "react";
 import { useNavigate } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
@@ -24,21 +23,21 @@ interface ProfileBase {
 interface StudentProfile extends ProfileBase {
   role: "student";
   student_id: string | null;
-  staff_id?: string | null;
-  admin_id?: string | null;
+  staff_id: null;
+  admin_id: null;
 }
 
 interface StaffProfile extends ProfileBase {
   role: "staff";
-  student_id?: string | null;
+  student_id: null;
   staff_id: string | null;
-  admin_id?: string | null;
+  admin_id: null;
 }
 
 interface AdminProfile extends ProfileBase {
   role: "admin";
-  student_id?: string | null;
-  staff_id?: string | null;
+  student_id: null;
+  staff_id: null;
   admin_id: string | null;
 }
 
@@ -177,7 +176,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         
         if (mockUser && mockUser.email === email) {
           // Staff and Admin require college domain emails
-          if ((role === 'staff' || role === 'admin') && !email.endsWith('@college.edu')) {
+          if ((role === 'staff' || role === 'admin') && 
+              !validateCollegeDomainEmail(email)) {
             throw new Error(`${role} must use a college domain email`);
           }
           
@@ -226,7 +226,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           
           // Staff and Admin require college domain emails
           if ((profileData.role === 'staff' || profileData.role === 'admin') && 
-              !profileData.email.endsWith('@college.edu')) {
+              !validateCollegeDomainEmail(profileData.email)) {
             throw new Error(`${profileData.role} must use a college domain email`);
           }
           
@@ -282,9 +282,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         
         // Update the profile data with user information
         if (role === 'student') {
-          mockUser.profile = {
-            ...mockUser.profile,
-            student_id: userData.id,
+          const studentProfile: StudentProfile = {
+            id: mockUser.id,
+            student_id: userData.id || null,
             staff_id: null,
             admin_id: null,
             full_name: userData.fullName,
@@ -292,10 +292,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             role: 'student',
             phone: null,
             avatar_url: null
-          } as StudentProfile;
+          };
+          
+          mockUser.profile = studentProfile;
         } else if (role === 'staff') {
-          mockUser.profile = {
-            ...mockUser.profile,
+          const staffProfile: StaffProfile = {
+            id: mockUser.id,
             student_id: null,
             staff_id: 'STAFF' + Math.floor(1000 + Math.random() * 9000),
             admin_id: null,
@@ -304,10 +306,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             role: 'staff',
             phone: null,
             avatar_url: null
-          } as StaffProfile;
+          };
+          
+          mockUser.profile = staffProfile;
         } else if (role === 'admin') {
-          mockUser.profile = {
-            ...mockUser.profile,
+          const adminProfile: AdminProfile = {
+            id: mockUser.id,
             student_id: null,
             staff_id: null,
             admin_id: 'ADMIN' + Math.floor(1000 + Math.random() * 9000),
@@ -316,7 +320,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             role: 'admin',
             phone: null,
             avatar_url: null
-          } as AdminProfile;
+          };
+          
+          mockUser.profile = adminProfile;
         }
         
         setUser(mockUser);
@@ -358,8 +364,41 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (error) throw error;
         
         if (data.user) {
-          // The profile will be created automatically by the database trigger
-          // Just show a success message
+          // If not using email verification, create a session immediately
+          // Uncomment this if using no email verification in Supabase
+          /*
+          const { data: sessionData, error: sessionError } = await supabase.auth.signInWithPassword({
+            email,
+            password
+          });
+          
+          if (sessionError) throw sessionError;
+          
+          if (sessionData.user) {
+            setUser({ id: sessionData.user.id, email: sessionData.user.email || '' });
+            
+            // Check for or create profile
+            const { data: profileData } = await supabase
+              .from('profiles')
+              .select('*')
+              .eq('id', sessionData.user.id)
+              .single();
+              
+            if (profileData) {
+              setProfile(profileData as Profile);
+              
+              // Navigate to dashboard
+              navigate(`/${profileData.role}/dashboard`);
+              
+              toast({
+                title: "Account created & signed in",
+                description: `Welcome to UniSync, ${profileData.full_name}!`,
+              });
+            }
+          }
+          */
+          
+          // Default behavior - show a success message and navigate to login
           toast({
             title: "Account created",
             description: "Please check your email to verify your account.",
@@ -382,7 +421,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  // Reset password function (forgot password)
+  // Reset password function
   const resetPassword = async (email: string) => {
     try {
       setLoading(true);
@@ -426,7 +465,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  // Update password function (after reset)
+  // Update password function
   const updatePassword = async (password: string) => {
     try {
       setLoading(true);
