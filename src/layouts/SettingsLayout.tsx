@@ -1,93 +1,95 @@
 
-import React, { ReactNode } from 'react';
-import { Bell, Moon, Shield, User, History, Key, Settings as SettingsIcon } from 'lucide-react';
-import { Link, useLocation } from 'react-router-dom';
-import DashboardLayout from './DashboardLayout';
+import React, { ReactNode, useState, useEffect } from 'react';
+import { Outlet, Link, useLocation, useParams, useNavigate } from 'react-router-dom';
+import { cn } from '@/lib/utils';
+import { buttonVariants } from '@/components/ui/button';
+import { Separator } from '@/components/ui/separator';
+import { useAuth } from '@/contexts/AuthContext';
 
-type NavItem = {
-  title: string;
-  href: string;
-  icon: React.ReactNode;
-};
+interface SettingsLayoutProps {
+  children?: ReactNode;
+}
 
-type SettingsLayoutProps = {
-  children: ReactNode;
-  role: 'student' | 'staff' | 'admin';
-};
-
-export default function SettingsLayout({ children, role }: SettingsLayoutProps) {
+export default function SettingsLayout({ children }: SettingsLayoutProps) {
+  const { role } = useParams<{ role: string }>();
   const location = useLocation();
+  const navigate = useNavigate();
+  const { profile } = useAuth();
   
-  const baseUrl = `/${role}/settings`;
+  useEffect(() => {
+    // If path is just /settings, redirect to /settings/profile
+    if (location.pathname === `/${role}/settings`) {
+      navigate(`/${role}/settings/profile`);
+    }
+  }, [location.pathname, navigate, role]);
   
-  const navItems: NavItem[] = [
+  const isAdmin = role === 'admin';
+  
+  const links = [
     {
-      title: "Profile",
-      href: `${baseUrl}/profile`,
-      icon: <User className="h-4 w-4" />,
+      href: `/${role}/settings/profile`,
+      label: 'Profile',
+      id: 'profile',
     },
     {
-      title: "Notifications",
-      href: `${baseUrl}/notifications`,
-      icon: <Bell className="h-4 w-4" />,
+      href: `/${role}/settings/notifications`,
+      label: 'Notifications',
+      id: 'notifications',
     },
     {
-      title: "Appearance",
-      href: `${baseUrl}/appearance`,
-      icon: <Moon className="h-4 w-4" />,
+      href: `/${role}/settings/appearance`,
+      label: 'Appearance',
+      id: 'appearance',
     },
     {
-      title: "Security",
-      href: `${baseUrl}/security`,
-      icon: <Shield className="h-4 w-4" />,
-    },
-    {
-      title: "Activity",
-      href: `${baseUrl}/activity`,
-      icon: <History className="h-4 w-4" />,
+      href: `/${role}/settings/security`,
+      label: 'Security',
+      id: 'security',
     },
   ];
-
-  // Add admin-specific navigation items
-  if (role === 'admin') {
-    navItems.push({
-      title: "User Management",
-      href: `${baseUrl}/user-management`,
-      icon: <Key className="h-4 w-4" />,
+  
+  // Add User Management link only for admins
+  if (isAdmin) {
+    links.push({
+      href: `/${role}/settings/users`,
+      label: 'User Management',
+      id: 'users',
     });
   }
 
   return (
-    <DashboardLayout role={role}>
-      <div className="space-y-6">
-        <div className="flex items-center justify-between">
-          <h2 className="text-2xl font-bold tracking-tight">Settings</h2>
-        </div>
-        
-        <div className="flex flex-col space-y-8 lg:flex-row lg:space-x-12 lg:space-y-0">
-          <aside className="-mx-4 lg:w-1/5">
-            <nav className="flex space-x-2 lg:flex-col lg:space-x-0 lg:space-y-1 overflow-auto">
-              {navItems.map((item) => (
-                <Link
-                  key={item.href}
-                  to={item.href}
-                  className={`flex items-center gap-3 rounded-lg px-3 py-2 transition-all hover:text-primary ${
-                    location.pathname === item.href
-                      ? "bg-accent text-primary"
-                      : "text-muted-foreground"
-                  }`}
-                >
-                  {item.icon}
-                  {item.title}
-                </Link>
-              ))}
-            </nav>
-          </aside>
-          <div className="flex-1 lg:max-w-4xl">
-            {children}
-          </div>
+    <div className="space-y-6 pb-16">
+      <div>
+        <h2 className="text-2xl font-bold tracking-tight">Settings</h2>
+        <p className="text-muted-foreground">
+          Manage your account settings and preferences.
+        </p>
+      </div>
+      <Separator />
+      <div className="flex flex-col space-y-8 lg:flex-row lg:space-x-12 lg:space-y-0">
+        <aside className="lg:w-1/5">
+          <nav className="flex flex-col space-y-1">
+            {links.map((link) => (
+              <Link
+                key={link.href}
+                to={link.href}
+                className={cn(
+                  buttonVariants({ variant: "ghost" }),
+                  location.pathname.includes(link.id)
+                    ? "bg-muted hover:bg-muted"
+                    : "hover:bg-transparent hover:underline",
+                  "justify-start"
+                )}
+              >
+                {link.label}
+              </Link>
+            ))}
+          </nav>
+        </aside>
+        <div className="flex-1 lg:max-w-2xl">
+          {children || <Outlet />}
         </div>
       </div>
-    </DashboardLayout>
+    </div>
   );
 }

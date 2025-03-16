@@ -1,108 +1,189 @@
 
 import React, { useState } from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
+import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/contexts/AuthContext';
 
-type NotificationSettingsProps = {
-  role: 'student' | 'staff' | 'admin';
-};
-
-export default function NotificationSettings({ role }: NotificationSettingsProps) {
-  // Different notification options based on role
-  const getNotificationCategories = () => {
-    const common = [
-      { id: 'emergency', label: 'Emergency Alerts', defaultChecked: true, disabled: true },
-      { id: 'events', label: 'Events', defaultChecked: true },
-      { id: 'placements', label: 'Placements', defaultChecked: true },
-      { id: 'general', label: 'General Updates', defaultChecked: true },
-    ];
-
-    if (role === 'student') {
-      return [
-        ...common,
-        { id: 'leave_status', label: 'Leave & OD Request Status Updates', defaultChecked: true },
-      ];
-    }
-
-    if (role === 'staff') {
-      return [
-        ...common,
-        { id: 'leave_requests', label: 'Leave Request Updates', defaultChecked: true },
-        { id: 'od_requests', label: 'OD Acknowledgment Requests', defaultChecked: true },
-      ];
-    }
-
-    if (role === 'admin') {
-      return [
-        ...common,
-        { id: 'leave_requests', label: 'Leave Request Updates', defaultChecked: true },
-        { id: 'od_requests', label: 'OD Request Updates', defaultChecked: true },
-        { id: 'user_management', label: 'User Management Updates', defaultChecked: true },
-      ];
-    }
-
-    return common;
-  };
-
-  const [notifications, setNotifications] = useState(() => {
-    const categories = getNotificationCategories();
-    return Object.fromEntries(categories.map(cat => [cat.id, cat.defaultChecked]));
+export default function NotificationSettings() {
+  const { toast } = useToast();
+  const { user } = useAuth();
+  const [loading, setLoading] = useState(false);
+  
+  const [emailNotifications, setEmailNotifications] = useState({
+    announcements: true,
+    leaveUpdates: true,
+    security: true,
   });
-
-  const handleToggle = (id: string, checked: boolean) => {
-    setNotifications(prev => ({
-      ...prev,
-      [id]: checked
-    }));
+  
+  const [pushNotifications, setPushNotifications] = useState({
+    announcements: false,
+    leaveUpdates: false,
+    security: true,
+  });
+  
+  const handleEmailChange = (key: keyof typeof emailNotifications) => (checked: boolean) => {
+    setEmailNotifications(prev => ({ ...prev, [key]: checked }));
   };
-
-  const handleSave = () => {
-    // In a real app, you would save this to your backend
-    console.log('Saving notification settings:', notifications);
-    // Show success toast or message
+  
+  const handlePushChange = (key: keyof typeof pushNotifications) => (checked: boolean) => {
+    setPushNotifications(prev => ({ ...prev, [key]: checked }));
   };
-
+  
+  const handleSavePreferences = async () => {
+    if (!user) {
+      toast({
+        title: "Not authenticated",
+        description: "You must be logged in to save notification preferences",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    setLoading(true);
+    
+    try {
+      // Simulate API call to save preferences
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      toast({
+        title: "Preferences saved",
+        description: "Your notification preferences have been updated",
+      });
+    } catch (error) {
+      console.error("Error saving notification preferences:", error);
+      toast({
+        title: "Error",
+        description: "Failed to save notification preferences",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+  
   return (
     <div className="space-y-6">
       <div>
-        <h3 className="text-lg font-medium">Notification Settings</h3>
+        <h3 className="text-lg font-medium">Notifications</h3>
         <p className="text-sm text-muted-foreground">
-          Manage your notification preferences to control what you receive.
+          Manage how you receive notifications from UniSync
         </p>
       </div>
-
+      
+      <Card>
+        <CardHeader>
+          <CardTitle>Email Notifications</CardTitle>
+          <CardDescription>
+            Choose which emails you'd like to receive
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <Label htmlFor="email-announcements">Announcements</Label>
+              <p className="text-sm text-muted-foreground">
+                Receive emails about new announcements
+              </p>
+            </div>
+            <Switch
+              id="email-announcements"
+              checked={emailNotifications.announcements}
+              onCheckedChange={handleEmailChange('announcements')}
+            />
+          </div>
+          
+          <div className="flex items-center justify-between">
+            <div>
+              <Label htmlFor="email-leave">Leave updates</Label>
+              <p className="text-sm text-muted-foreground">
+                Receive emails about your leave requests
+              </p>
+            </div>
+            <Switch
+              id="email-leave"
+              checked={emailNotifications.leaveUpdates}
+              onCheckedChange={handleEmailChange('leaveUpdates')}
+            />
+          </div>
+          
+          <div className="flex items-center justify-between">
+            <div>
+              <Label htmlFor="email-security">Security alerts</Label>
+              <p className="text-sm text-muted-foreground">
+                Receive emails about security events
+              </p>
+            </div>
+            <Switch
+              id="email-security"
+              checked={emailNotifications.security}
+              onCheckedChange={handleEmailChange('security')}
+            />
+          </div>
+        </CardContent>
+      </Card>
+      
       <Card>
         <CardHeader>
           <CardTitle>Push Notifications</CardTitle>
           <CardDescription>
-            Manage how and when you receive notifications from UniSync.
+            Configure browser push notifications
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          {getNotificationCategories().map((category) => (
-            <div className="flex items-center justify-between space-x-2" key={category.id}>
-              <Label htmlFor={`notify-${category.id}`} className="flex-1 cursor-pointer">
-                {category.label}
-                {category.id === 'emergency' && (
-                  <span className="block text-xs text-muted-foreground">
-                    Emergency alerts cannot be disabled
-                  </span>
-                )}
-              </Label>
-              <Switch
-                id={`notify-${category.id}`}
-                checked={notifications[category.id]}
-                onCheckedChange={(checked) => handleToggle(category.id, checked)}
-                disabled={category.disabled}
-              />
+          <div className="flex items-center justify-between">
+            <div>
+              <Label htmlFor="push-announcements">Announcements</Label>
+              <p className="text-sm text-muted-foreground">
+                Receive push notifications for announcements
+              </p>
             </div>
-          ))}
+            <Switch
+              id="push-announcements"
+              checked={pushNotifications.announcements}
+              onCheckedChange={handlePushChange('announcements')}
+            />
+          </div>
+          
+          <div className="flex items-center justify-between">
+            <div>
+              <Label htmlFor="push-leave">Leave updates</Label>
+              <p className="text-sm text-muted-foreground">
+                Receive push notifications for leave updates
+              </p>
+            </div>
+            <Switch
+              id="push-leave"
+              checked={pushNotifications.leaveUpdates}
+              onCheckedChange={handlePushChange('leaveUpdates')}
+            />
+          </div>
+          
+          <div className="flex items-center justify-between">
+            <div>
+              <Label htmlFor="push-security">Security alerts</Label>
+              <p className="text-sm text-muted-foreground">
+                Receive push notifications for security events
+              </p>
+            </div>
+            <Switch
+              id="push-security"
+              checked={pushNotifications.security}
+              onCheckedChange={handlePushChange('security')}
+            />
+          </div>
         </CardContent>
+        <CardFooter>
+          <Button 
+            onClick={handleSavePreferences}
+            disabled={loading}
+          >
+            {loading ? 'Saving...' : 'Save Preferences'}
+          </Button>
+        </CardFooter>
       </Card>
-
-      <Button onClick={handleSave}>Save Preferences</Button>
     </div>
   );
 }

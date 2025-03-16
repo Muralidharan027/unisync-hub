@@ -1,25 +1,24 @@
 
 import React from 'react';
-import { useParams } from 'react-router-dom';
+import { Routes, Route, Navigate } from 'react-router-dom';
 import SettingsLayout from '@/layouts/SettingsLayout';
 import ProfileSettings from '@/components/settings/ProfileSettings';
 import NotificationSettings from '@/components/settings/NotificationSettings';
 import AppearanceSettings from '@/components/settings/AppearanceSettings';
 import SecuritySettings from '@/components/settings/SecuritySettings';
-import ActivitySettings from '@/components/settings/ActivitySettings';
 import UserManagementSettings from '@/components/settings/UserManagementSettings';
 
-export default function AdminSettingsPage() {
-  const { section = 'profile' } = useParams<{ section: string }>();
-
+export default function SettingsPage() {
   return (
-    <SettingsLayout role="admin">
-      {section === 'profile' && <ProfileSettings role="admin" />}
-      {section === 'notifications' && <NotificationSettings role="admin" />}
-      {section === 'appearance' && <AppearanceSettings />}
-      {section === 'security' && <SecuritySettings />}
-      {section === 'activity' && <ActivitySettings role="admin" />}
-      {section === 'user-management' && <UserManagementSettings />}
+    <SettingsLayout>
+      <Routes>
+        <Route path="profile" element={<ProfileSettings role="admin" />} />
+        <Route path="notifications" element={<NotificationSettings />} />
+        <Route path="appearance" element={<AppearanceSettings />} />
+        <Route path="security" element={<SecuritySettings />} />
+        <Route path="users" element={<UserManagementSettings />} />
+        <Route path="*" element={<Navigate to="profile" replace />} />
+      </Routes>
     </SettingsLayout>
   );
 }

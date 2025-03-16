@@ -28,6 +28,42 @@ export const getEdgeFunctionUrl = (functionName: string): string => {
   return `${SUPABASE_URL}/functions/v1/${functionName}`;
 };
 
+// Function to upload avatar to storage
+export const uploadAvatar = async (userId: string, file: File): Promise<string | null> => {
+  try {
+    console.log('Uploading avatar for user:', userId);
+    
+    // Generate a unique filename
+    const fileExt = file.name.split('.').pop();
+    const fileName = `${Date.now()}.${fileExt}`;
+    const filePath = `${userId}/${fileName}`;
+    
+    // Upload the file
+    const { error: uploadError } = await supabase.storage
+      .from('avatars')
+      .upload(filePath, file, {
+        cacheControl: '3600',
+        upsert: true
+      });
+    
+    if (uploadError) {
+      console.error('Avatar upload error:', uploadError);
+      throw uploadError;
+    }
+    
+    // Get the public URL
+    const { data } = supabase.storage
+      .from('avatars')
+      .getPublicUrl(filePath);
+    
+    console.log('Avatar uploaded successfully. URL:', data.publicUrl);
+    return data.publicUrl;
+  } catch (error) {
+    console.error('Error uploading avatar:', error);
+    return null;
+  }
+};
+
 // Function to call the generate-pdf edge function
 export const generatePdf = async (requestData: any): Promise<Blob> => {
   try {
