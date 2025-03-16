@@ -1,6 +1,5 @@
-
 import { useEffect, useState } from "react";
-import { Bell, Calendar, FileClock, FileText, Home, Users } from "lucide-react";
+import { Bell, Calendar, FileClock, FileText, Users } from "lucide-react";
 import DashboardLayout from "@/layouts/DashboardLayout";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
@@ -95,7 +94,7 @@ export default function StaffDashboard() {
   }, []);
 
   return (
-    <DashboardLayout role="staff">
+    <DashboardLayout>
       <div className="space-y-6">
         <div className="flex items-center justify-between">
           <h2 className="text-2xl font-bold tracking-tight">Staff Dashboard</h2>

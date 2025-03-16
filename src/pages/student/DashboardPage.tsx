@@ -1,6 +1,5 @@
-
 import { useEffect, useState } from "react";
-import { Bell, BookOpen, Calendar, FileClock, Home } from "lucide-react";
+import { Bell, BookOpen, Calendar, FileClock } from "lucide-react";
 import DashboardLayout from "@/layouts/DashboardLayout";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
@@ -23,11 +22,9 @@ export default function StudentDashboard() {
   const [recentRequests, setRecentRequests] = useState<LeaveRequest[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Fetch real-time data
   useEffect(() => {
     setIsLoading(true);
     
-    // Load leave requests from window.globalLeaveRequests (our mock global store)
     if (profile && window.globalLeaveRequests) {
       const studentRequests = window.globalLeaveRequests.filter(
         req => req.studentId === profile.student_id
@@ -35,26 +32,24 @@ export default function StudentDashboard() {
       
       setRecentRequests(studentRequests.slice(0, 3));
       
-      // Update stats based on real data
       const pendingCount = studentRequests.filter(req => req.status === "pending").length;
       const approvedCount = studentRequests.filter(req => req.status === "approved").length;
       
       setStats(prev => [
         { ...prev[0], value: pendingCount.toString() },
         { ...prev[1], value: approvedCount.toString() },
-        { ...prev[2], value: "0" }, // Will be updated when we fetch announcements
+        { ...prev[2], value: "0" },
         { ...prev[3], value: "0" }
       ]);
     }
     
-    // Simulating announcements fetch (would be from Supabase in real app)
     setTimeout(() => {
       setIsLoading(false);
     }, 800);
   }, [profile]);
 
   return (
-    <DashboardLayout role="student">
+    <DashboardLayout>
       <div className="space-y-6">
         <div className="flex items-center justify-between">
           <h2 className="text-2xl font-bold tracking-tight">Dashboard</h2>
@@ -74,7 +69,6 @@ export default function StudentDashboard() {
           </div>
         </div>
 
-        {/* Quick Stats */}
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
           {stats.map((stat) => (
             <Card key={stat.title}>
@@ -93,9 +87,7 @@ export default function StudentDashboard() {
           ))}
         </div>
 
-        {/* Recent Activity */}
         <div className="grid gap-4 md:grid-cols-2">
-          {/* Recent Announcements */}
           <Card>
             <CardHeader>
               <CardTitle>Recent Announcements</CardTitle>
@@ -143,7 +135,6 @@ export default function StudentDashboard() {
             </CardFooter>
           </Card>
 
-          {/* Recent Requests */}
           <Card>
             <CardHeader>
               <CardTitle>Recent Requests</CardTitle>

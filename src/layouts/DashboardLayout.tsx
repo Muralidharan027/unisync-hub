@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { User } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
-import { LogOut, Sun, Moon, Menu, Bell, Calendar, Book, Home, MessageSquare, LayoutDashboard, Settings } from "lucide-react";
+import { LogOut, Sun, Moon, Menu, Bell, Calendar, Home, MessageSquare, LayoutDashboard, Settings } from "lucide-react";
 import { useTheme } from "next-themes";
 import { Separator } from "@/components/ui/separator";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -88,7 +88,16 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
   };
 
   const toggleTheme = () => {
-    setTheme(theme === "dark" ? "light" : "dark");
+    const newTheme = theme === "dark" ? "light" : "dark";
+    setTheme(newTheme);
+    toast({
+      title: `Theme Changed`,
+      description: `Switched to ${newTheme} mode`,
+    });
+  };
+
+  const goToHomeDashboard = () => {
+    navigate(`/${role}/dashboard`);
   };
 
   return (
@@ -128,14 +137,18 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
                 </nav>
               </SheetContent>
             </Sheet>
-            <Link to="/" className="flex items-center gap-2">
+            <Button 
+              onClick={goToHomeDashboard}
+              variant="ghost" 
+              className="flex items-center gap-1 px-2 hover:bg-accent"
+            >
               <Home className="h-5 w-5" />
               <span className="font-semibold hidden sm:inline-block">UniSync</span>
-            </Link>
+            </Button>
           </div>
 
           {/* Desktop navigation */}
-          <nav className="hidden md:flex items-center gap-6">
+          <nav className="hidden md:flex items-center gap-4">
             {menuItems.map((item) => (
               <Link
                 key={item.href}
@@ -156,12 +169,13 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
           </nav>
 
           {/* User actions */}
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-3">
             <Button
               variant="ghost"
               size="icon"
               aria-label="Toggle theme"
               onClick={toggleTheme}
+              className="rounded-full"
             >
               {theme === "dark" ? (
                 <Sun className="h-5 w-5" />
