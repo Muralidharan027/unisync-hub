@@ -73,3 +73,23 @@ export const calculatePasswordStrength = (password: string): 'weak' | 'medium' |
   
   return 'weak';
 };
+
+/**
+ * Validates a phone number
+ * @param phone The phone number to validate
+ * @returns true if the phone number is valid, false otherwise
+ */
+export const validatePhoneNumber = (phone: string): boolean => {
+  // Accept a 10-digit phone number (Indian format)
+  return /^\d{10}$/.test(phone);
+};
+
+/**
+ * Validates that two passwords match
+ * @param password The password
+ * @param confirmPassword The confirmation password
+ * @returns true if the passwords match, false otherwise
+ */
+export const validatePasswordMatch = (password: string, confirmPassword: string): boolean => {
+  return password === confirmPassword;
+};

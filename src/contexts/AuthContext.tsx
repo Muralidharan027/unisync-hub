@@ -16,7 +16,9 @@ interface ProfileBase {
   full_name: string | null;
   email: string;
   phone?: string | null;
+  department?: string | null;
   avatar_url?: string | null;
+  persist_data?: boolean | null;
   created_at?: string;
   updated_at?: string;
 }
@@ -53,7 +55,7 @@ interface AuthContextType {
   signOut: () => Promise<void>;
   validateStudentId: (studentId: string) => boolean;
   resetPassword: (email: string) => Promise<void>;
-  updatePassword: (password: string) => Promise<void>;
+  updatePassword: (currentPassword: string, newPassword: string) => Promise<void>;
 }
 
 // Create context
@@ -73,7 +75,9 @@ const MOCK_USERS = {
       staff_id: null,
       admin_id: null,
       phone: null,
+      department: null,
       avatar_url: null,
+      persist_data: false,
     }
   },
   staff: {
@@ -88,7 +92,9 @@ const MOCK_USERS = {
       staff_id: "STA001",
       admin_id: null,
       phone: null,
+      department: null,
       avatar_url: null,
+      persist_data: false,
     }
   },
   admin: {
@@ -103,7 +109,9 @@ const MOCK_USERS = {
       staff_id: null,
       admin_id: "ADM001",
       phone: null,
+      department: null,
       avatar_url: null,
+      persist_data: false,
     }
   }
 };
@@ -468,9 +476,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   // Update password function
-  const updatePassword = async (password: string) => {
+  const updatePassword = async (currentPassword: string, newPassword: string) => {
     try {
       setLoading(true);
+      
+      if (!user) {
+        throw new Error('You must be logged in to update your password');
+      }
       
       if (process.env.NODE_ENV === 'development' && !import.meta.env.VITE_USE_SUPABASE) {
         // Simulate update password delay
@@ -480,13 +492,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           title: "Password updated",
           description: "Your password has been successfully updated.",
         });
-        
-        // Navigate to login page
-        navigate("/auth/login");
       } else {
-        // Real Supabase update password
+        // First verify the current password by attempting to sign in
+        const { error: signInError } = await supabase.auth.signInWithPassword({
+          email: user.email,
+          password: currentPassword,
+        });
+        
+        if (signInError) {
+          throw new Error('Current password is incorrect');
+        }
+        
+        // Update to the new password
         const { error } = await supabase.auth.updateUser({
-          password,
+          password: newPassword,
         });
         
         if (error) throw error;
@@ -495,9 +514,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           title: "Password updated",
           description: "Your password has been successfully updated.",
         });
-        
-        // Navigate to login page
-        navigate("/auth/login");
       }
     } catch (error: any) {
       console.error("Update password error:", error);
