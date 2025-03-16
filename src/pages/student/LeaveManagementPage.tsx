@@ -138,7 +138,8 @@ export default function StudentLeaveManagementPage() {
         section: data.section,
         rollNumber: data.rollNumber,
         staffEmail: data.staffEmail,
-        adminEmail: data.adminEmail
+        adminEmail: data.adminEmail,
+        department: data.department
       };
       
       // Try to store in Supabase first
@@ -164,7 +165,8 @@ export default function StudentLeaveManagementPage() {
               section: newRequest.section,
               roll_number: newRequest.rollNumber,
               staff_email: newRequest.staffEmail,
-              admin_email: newRequest.adminEmail
+              admin_email: newRequest.adminEmail,
+              department: data.department
             })
             .select()
             .single();
@@ -178,8 +180,27 @@ export default function StudentLeaveManagementPage() {
             
             // Send email notification using edge function
             try {
+              // Include additional data needed for the email
+              const emailData = {
+                leaveData: {
+                  staffEmail: newRequest.staffEmail,
+                  adminEmail: newRequest.adminEmail,
+                  senderName: newRequest.senderName,
+                  registerNumber: newRequest.registerNumber,
+                  requestType: newRequest.type,
+                  startDate: newRequest.startDate,
+                  endDate: newRequest.endDate,
+                  reason: newRequest.reason,
+                  details: newRequest.details,
+                  classYear: newRequest.classYear,
+                  section: newRequest.section,
+                  rollNumber: newRequest.rollNumber,
+                  department: data.department
+                }
+              };
+              
               const { error: emailError } = await supabase.functions.invoke('send-leave-email', {
-                body: { leaveData: newRequest }
+                body: emailData
               });
               
               if (emailError) {

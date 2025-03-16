@@ -21,3 +21,8 @@ export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABL
 export const getStorageUrl = (bucket: string, path: string): string => {
   return `${SUPABASE_URL}/storage/v1/object/public/${bucket}/${path}`;
 };
+
+// Function to get Edge Function URL
+export const getEdgeFunctionUrl = (functionName: string): string => {
+  return `${SUPABASE_URL}/functions/v1/${functionName}`;
+};

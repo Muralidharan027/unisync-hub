@@ -1,6 +1,7 @@
 
 import { serve } from "https://deno.land/std@0.131.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.7";
+import { Resend } from "https://esm.sh/resend@2.1.0";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -16,7 +17,15 @@ serve(async (req) => {
   try {
     const supabaseUrl = Deno.env.get('SUPABASE_URL') || '';
     const supabaseKey = Deno.env.get('SUPABASE_ANON_KEY') || '';
+    const resendApiKey = Deno.env.get('RESEND_API_KEY');
+    
+    if (!resendApiKey) {
+      console.error("RESEND_API_KEY environment variable is not set");
+      throw new Error("Email service configuration is missing");
+    }
+    
     const supabase = createClient(supabaseUrl, supabaseKey);
+    const resend = new Resend(resendApiKey);
     
     const { leaveData } = await req.json();
     
@@ -24,26 +33,23 @@ serve(async (req) => {
       throw new Error('Leave request data is required');
     }
     
-    const { staffEmail, adminEmail, senderName, registerNumber, requestType } = leaveData;
+    const { staffEmail, adminEmail, senderName, registerNumber, requestType, startDate, endDate, reason, details } = leaveData;
     
     // Validate email addresses
     if (!staffEmail || !adminEmail) {
       throw new Error('Staff and Admin emails are required');
     }
     
-    // In a real app, we would use an email service like Resend, SendGrid, etc.
-    // For now, we'll just log the email data
     console.log('Sending email to:', staffEmail, adminEmail);
     console.log('Leave request details:', leaveData);
     
-    // Here you would integrate with an email service
-    // Example with Resend (uncomment and add your API key when ready):
-    /*
-    const RESEND_API_KEY = Deno.env.get('RESEND_API_KEY');
-    const resend = new Resend(RESEND_API_KEY);
+    // Format dates 
+    const formattedStartDate = new Date(startDate).toLocaleDateString();
+    const formattedEndDate = new Date(endDate).toLocaleDateString();
     
+    // Create email content
     const { data, error } = await resend.emails.send({
-      from: 'leave-system@yourdomain.com',
+      from: 'Leave Management System <onboarding@resend.dev>',
       to: [staffEmail, adminEmail],
       subject: `Leave Request from ${senderName} (${registerNumber})`,
       html: `
@@ -52,21 +58,22 @@ serve(async (req) => {
         <ul>
           <li><strong>Name:</strong> ${senderName}</li>
           <li><strong>Register Number:</strong> ${registerNumber}</li>
-          <li><strong>From:</strong> ${leaveData.startDate}</li>
-          <li><strong>To:</strong> ${leaveData.endDate}</li>
-          <li><strong>Reason:</strong> ${leaveData.reason}</li>
-          ${leaveData.details ? `<li><strong>Details:</strong> ${leaveData.details}</li>` : ''}
+          <li><strong>From:</strong> ${formattedStartDate}</li>
+          <li><strong>To:</strong> ${formattedEndDate}</li>
+          <li><strong>Reason:</strong> ${reason}</li>
+          ${details ? `<li><strong>Details:</strong> ${details}</li>` : ''}
         </ul>
         <p>Please review this request in the UniSync system.</p>
       `,
     });
     
     if (error) {
+      console.error("Failed to send email:", error);
       throw new Error(`Failed to send email: ${error.message}`);
     }
-    */
     
-    // For now, we'll mock a successful email send
+    console.log("Email sent successfully:", data);
+    
     return new Response(
       JSON.stringify({ 
         success: true,
