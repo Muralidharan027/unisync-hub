@@ -87,6 +87,7 @@ export default function LoginPage() {
     }
 
     try {
+      console.log("Attempting login with:", identifier, "role:", role);
       await signIn(identifier, password, { role });
     } catch (error) {
       console.error("Login error:", error);

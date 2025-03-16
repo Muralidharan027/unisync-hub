@@ -136,6 +136,7 @@ export default function SignupPage() {
     }
 
     try {
+      console.log("Signing up with:", { email, role, fullName, id });
       // Sign up with the provided information
       await signUp(email, password, role, { fullName, id });
     } catch (error) {

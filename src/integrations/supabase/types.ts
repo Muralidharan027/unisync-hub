@@ -113,9 +113,11 @@ export type Database = {
           admin_id: string | null
           avatar_url: string | null
           created_at: string
+          department: string | null
           email: string
           full_name: string | null
           id: string
+          persist_data: boolean | null
           phone: string | null
           role: string
           staff_id: string | null
@@ -126,9 +128,11 @@ export type Database = {
           admin_id?: string | null
           avatar_url?: string | null
           created_at?: string
+          department?: string | null
           email: string
           full_name?: string | null
           id: string
+          persist_data?: boolean | null
           phone?: string | null
           role: string
           staff_id?: string | null
@@ -139,9 +143,11 @@ export type Database = {
           admin_id?: string | null
           avatar_url?: string | null
           created_at?: string
+          department?: string | null
           email?: string
           full_name?: string | null
           id?: string
+          persist_data?: boolean | null
           phone?: string | null
           role?: string
           staff_id?: string | null

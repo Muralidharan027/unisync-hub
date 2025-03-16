@@ -39,12 +39,11 @@ export default function ProfileSettings({ role }: ProfileSettingsProps) {
     confirmPassword: '',
   });
 
-  const [persistData, setPersistData] = useState(() => {
-    return localStorage.getItem('persistUserData') === 'true';
-  });
+  const [persistData, setPersistData] = useState(false);
 
   useEffect(() => {
     if (profile) {
+      console.log("Setting form data from profile:", profile);
       setFormData({
         name: profile.full_name || '',
         email: profile.email || '',
@@ -53,6 +52,8 @@ export default function ProfileSettings({ role }: ProfileSettingsProps) {
         profilePicture: profile.avatar_url || '',
         id: profile.student_id || profile.staff_id || profile.admin_id || '',
       });
+      
+      setPersistData(profile.persist_data || false);
     }
   }, [profile]);
 
@@ -67,16 +68,23 @@ export default function ProfileSettings({ role }: ProfileSettingsProps) {
   };
 
   const handlePersistDataToggle = async (checked: boolean) => {
-    setPersistData(checked);
-    localStorage.setItem('persistUserData', checked.toString());
-    
     try {
+      setPersistData(checked);
+      console.log("Toggling data persistence to:", checked);
+      
       // Update user metadata with persistence preference
       if (user) {
-        await supabase
+        const { error } = await supabase
           .from('profiles')
           .update({ persist_data: checked })
           .eq('id', user.id);
+          
+        if (error) {
+          console.error("Error updating persist_data:", error);
+          throw error;
+        }
+        
+        console.log("Updated persist_data in database");
       }
       
       toast({
@@ -85,11 +93,11 @@ export default function ProfileSettings({ role }: ProfileSettingsProps) {
           ? "Your data will now be saved between sessions" 
           : "Your data will no longer be saved between sessions",
       });
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error updating data persistence:", error);
       toast({
         title: "Error",
-        description: "Failed to update data persistence settings",
+        description: "Failed to update data persistence settings: " + error.message,
         variant: "destructive",
       });
     }
@@ -103,6 +111,8 @@ export default function ProfileSettings({ role }: ProfileSettingsProps) {
       if (!user || !profile) {
         throw new Error('User is not authenticated');
       }
+      
+      console.log("Saving profile changes:", formData);
       
       // Phone number validation
       if (formData.phone && !validatePhoneNumber(formData.phone)) {
@@ -120,7 +130,12 @@ export default function ProfileSettings({ role }: ProfileSettingsProps) {
         })
         .eq('id', user.id);
       
-      if (error) throw error;
+      if (error) {
+        console.error("Error updating profile:", error);
+        throw error;
+      }
+      
+      console.log("Profile updated successfully");
       
       toast({
         title: 'Profile updated',
@@ -147,6 +162,8 @@ export default function ProfileSettings({ role }: ProfileSettingsProps) {
         throw new Error('User is not authenticated');
       }
       
+      console.log("Attempting to update password");
+      
       // Validate passwords
       if (!passwordData.currentPassword || !passwordData.newPassword || !passwordData.confirmPassword) {
         throw new Error('Please fill in all password fields');
@@ -169,6 +186,8 @@ export default function ProfileSettings({ role }: ProfileSettingsProps) {
         newPassword: '',
         confirmPassword: '',
       });
+      
+      console.log("Password updated successfully");
       
       toast({
         title: 'Password updated',
@@ -193,17 +212,42 @@ export default function ProfileSettings({ role }: ProfileSettingsProps) {
     setAvatarLoading(true);
     
     try {
+      console.log("Uploading profile picture:", file.name);
+      
+      // First check if storage bucket exists, if not create it
+      const { data: buckets } = await supabase.storage.listBuckets();
+      const avatarBucketExists = buckets?.some(bucket => bucket.name === 'avatars');
+      
+      if (!avatarBucketExists) {
+        console.log("Creating avatars bucket");
+        const { error: bucketError } = await supabase.storage.createBucket('avatars', {
+          public: true
+        });
+        
+        if (bucketError) {
+          console.error("Error creating bucket:", bucketError);
+          throw bucketError;
+        }
+      }
+      
       // Generate a unique filename to avoid conflicts
       const fileExt = file.name.split('.').pop();
       const fileName = `${uuidv4()}.${fileExt}`;
       const filePath = `${user.id}/${fileName}`;
+      
+      console.log("Uploading to path:", filePath);
       
       // Upload the file to Supabase Storage
       const { error: uploadError } = await supabase.storage
         .from('avatars')
         .upload(filePath, file);
       
-      if (uploadError) throw uploadError;
+      if (uploadError) {
+        console.error("Upload error:", uploadError);
+        throw uploadError;
+      }
+      
+      console.log("Upload successful, getting public URL");
       
       // Get the public URL for the uploaded image
       const { data } = supabase.storage
@@ -211,6 +255,7 @@ export default function ProfileSettings({ role }: ProfileSettingsProps) {
         .getPublicUrl(filePath);
       
       const publicUrl = data.publicUrl;
+      console.log("Public URL:", publicUrl);
       
       // Update the profile with the new avatar URL
       const { error: updateError } = await supabase
@@ -221,10 +266,15 @@ export default function ProfileSettings({ role }: ProfileSettingsProps) {
         })
         .eq('id', user.id);
       
-      if (updateError) throw updateError;
+      if (updateError) {
+        console.error("Profile update error:", updateError);
+        throw updateError;
+      }
       
       // Update local state with the new URL
       setFormData(prev => ({ ...prev, profilePicture: publicUrl }));
+      
+      console.log("Profile picture updated successfully");
       
       toast({
         title: 'Profile picture updated',
@@ -330,7 +380,7 @@ export default function ProfileSettings({ role }: ProfileSettingsProps) {
                 <Input 
                   id="phone" 
                   name="phone" 
-                  value={formData.phone} 
+                  value={formData.phone || ''} 
                   onChange={handleChange} 
                   placeholder="10-digit phone number"
                 />
@@ -340,7 +390,7 @@ export default function ProfileSettings({ role }: ProfileSettingsProps) {
                 <Input 
                   id="department" 
                   name="department" 
-                  value={formData.department} 
+                  value={formData.department || ''} 
                   onChange={handleChange} 
                   placeholder="Your department" 
                 />

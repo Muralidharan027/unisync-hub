@@ -128,9 +128,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const checkSession = async () => {
       try {
+        console.log("Checking session...");
         const { data: { session } } = await supabase.auth.getSession();
         
         if (session) {
+          console.log("Session found:", session);
           // We have a valid session, get the user
           const { user } = session;
           setUser({ id: user.id, email: user.email || '' });
@@ -143,21 +145,29 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             .single();
             
           if (error) {
+            console.error("Error fetching profile:", error);
             throw error;
           }
           
           if (profileData) {
+            console.log("Profile data:", profileData);
             setProfile(profileData as Profile);
             localStorage.setItem("userRole", profileData.role);
+          } else {
+            console.log("No profile found for user:", user.id);
           }
         } else {
+          console.log("No session found, checking localStorage");
           // Check localStorage for mock data in development
           const savedEmail = localStorage.getItem("userEmail");
           const savedRole = localStorage.getItem("userRole") as UserRole | null;
           
           if (savedEmail && savedRole && MOCK_USERS[savedRole]) {
+            console.log("Using mock data for:", savedRole);
             setUser(MOCK_USERS[savedRole]);
             setProfile(MOCK_USERS[savedRole].profile as Profile);
+          } else {
+            console.log("No saved credentials found");
           }
         }
       } catch (error) {
@@ -174,6 +184,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const signIn = async (email: string, password: string, roleData?: { role: UserRole; id?: string }) => {
     try {
       setLoading(true);
+      console.log("Attempting sign in with:", email);
       
       if (process.env.NODE_ENV === 'development' && !import.meta.env.VITE_USE_SUPABASE) {
         // Simulate authentication delay
@@ -209,16 +220,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
       } else {
         // Real Supabase authentication
-        console.log("Signing in with:", { email, password });
+        console.log("Signing in with Supabase:", { email, password });
         
         const { data, error } = await supabase.auth.signInWithPassword({
           email,
           password,
         });
         
-        if (error) throw error;
+        if (error) {
+          console.error("Supabase sign in error:", error);
+          throw error;
+        }
         
         if (data.user) {
+          console.log("Supabase sign in successful:", data.user);
           // Fetch the user profile
           const { data: profileData, error: profileError } = await supabase
             .from('profiles')
@@ -226,7 +241,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             .eq('id', data.user.id)
             .single();
             
-          if (profileError) throw profileError;
+          if (profileError) {
+            console.error("Profile fetch error:", profileError);
+            throw profileError;
+          }
+
+          if (!profileData) {
+            console.error("No profile found for user:", data.user.id);
+            throw new Error("User profile not found. Please contact support.");
+          }
 
           // Role-specific validations
           if (roleData && profileData.role !== roleData.role) {
@@ -241,6 +264,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           
           setUser({ id: data.user.id, email: data.user.email || '' });
           setProfile(profileData as Profile);
+          
+          // Save role in localStorage
+          localStorage.setItem("userRole", profileData.role);
           
           // Navigate to dashboard
           navigate(`/${profileData.role}/dashboard`);
@@ -268,6 +294,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const signUp = async (email: string, password: string, role: UserRole, userData: { fullName: string; id?: string }) => {
     try {
       setLoading(true);
+      console.log("Signing up with:", { email, role, userData });
       
       // Role-specific validations
       if (role === 'student') {
@@ -350,7 +377,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         });
       } else {
         // Real Supabase signup
-        console.log("Signing up with:", { email, password, role, userData });
+        console.log("Signing up with Supabase:", { email, password, role, userData });
         
         // Prepare metadata based on role
         const metadata: any = {
@@ -366,35 +393,50 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           email,
           password,
           options: {
-            data: metadata
+            data: metadata,
+            emailRedirectTo: window.location.origin + '/auth/login'
           }
         });
         
-        if (error) throw error;
+        if (error) {
+          console.error("Supabase signup error:", error);
+          throw error;
+        }
+        
+        console.log("Supabase signup response:", data);
         
         if (data.user) {
           console.log("User created successfully:", data.user);
           
           // For development purposes, let's immediately sign in the user
-          if (process.env.NODE_ENV === 'development') {
+          try {
             const { data: sessionData, error: sessionError } = await supabase.auth.signInWithPassword({
               email,
               password
             });
             
-            if (sessionError) throw sessionError;
+            if (sessionError) {
+              console.error("Auto sign-in error:", sessionError);
+              throw sessionError;
+            }
             
             if (sessionData.user) {
+              console.log("Auto sign-in successful:", sessionData.user);
               setUser({ id: sessionData.user.id, email: sessionData.user.email || '' });
               
               // Check for or create profile
-              const { data: profileData } = await supabase
+              const { data: profileData, error: profileError } = await supabase
                 .from('profiles')
                 .select('*')
                 .eq('id', sessionData.user.id)
                 .single();
+              
+              if (profileError && profileError.code !== 'PGRST116') {
+                console.error("Profile fetch error:", profileError);
+              }
                 
               if (profileData) {
+                console.log("Found existing profile:", profileData);
                 setProfile(profileData as Profile);
                 
                 // Navigate to dashboard
@@ -404,18 +446,41 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                   title: "Account created & signed in",
                   description: `Welcome to UniSync, ${profileData.full_name}!`,
                 });
+              } else {
+                console.log("No profile found, waiting for trigger to create it");
+                // Wait a bit and try again to get the profile
+                setTimeout(async () => {
+                  const { data: retryProfileData } = await supabase
+                    .from('profiles')
+                    .select('*')
+                    .eq('id', sessionData.user!.id)
+                    .single();
+                    
+                  if (retryProfileData) {
+                    console.log("Retrieved profile on retry:", retryProfileData);
+                    setProfile(retryProfileData as Profile);
+                    navigate(`/${retryProfileData.role}/dashboard`);
+                  } else {
+                    console.log("Could not retrieve profile after retry");
+                    navigate("/auth/login");
+                  }
+                }, 2000);
               }
             }
-          } else {
-            // Default behavior - show a success message and navigate to login
+          } catch (signInError) {
+            console.error("Error during auto sign-in:", signInError);
             toast({
               title: "Account created",
-              description: "Please check your email to verify your account.",
+              description: "Your account has been created. Please sign in.",
             });
-            
-            // Navigate to login page
             navigate("/auth/login");
           }
+        } else {
+          toast({
+            title: "Account created",
+            description: "Please check your email to verify your account.",
+          });
+          navigate("/auth/login");
         }
       }
     } catch (error: any) {
@@ -493,27 +558,33 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           description: "Your password has been successfully updated.",
         });
       } else {
-        // First verify the current password by attempting to sign in
-        const { error: signInError } = await supabase.auth.signInWithPassword({
-          email: user.email,
-          password: currentPassword,
-        });
-        
-        if (signInError) {
-          throw new Error('Current password is incorrect');
+        // Real Supabase password update
+        try {
+          // First verify the current password by attempting to sign in
+          const { error: signInError } = await supabase.auth.signInWithPassword({
+            email: user.email,
+            password: currentPassword,
+          });
+          
+          if (signInError) {
+            throw new Error('Current password is incorrect');
+          }
+          
+          // Update to the new password
+          const { error } = await supabase.auth.updateUser({
+            password: newPassword,
+          });
+          
+          if (error) throw error;
+          
+          toast({
+            title: "Password updated",
+            description: "Your password has been successfully updated.",
+          });
+        } catch (verifyError: any) {
+          console.error("Verify current password error:", verifyError);
+          throw new Error(verifyError.message || 'Current password is incorrect');
         }
-        
-        // Update to the new password
-        const { error } = await supabase.auth.updateUser({
-          password: newPassword,
-        });
-        
-        if (error) throw error;
-        
-        toast({
-          title: "Password updated",
-          description: "Your password has been successfully updated.",
-        });
       }
     } catch (error: any) {
       console.error("Update password error:", error);
