@@ -13,7 +13,8 @@ export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABL
   auth: {
     persistSession: true,
     autoRefreshToken: true,
-    detectSessionInUrl: true
+    detectSessionInUrl: true,
+    storageKey: 'supabase.auth.token'
   }
 });
 
@@ -30,17 +31,20 @@ export const getEdgeFunctionUrl = (functionName: string): string => {
 // Function to call the generate-pdf edge function
 export const generatePdf = async (requestData: any): Promise<Blob> => {
   try {
+    console.log('Calling generate-pdf function with data:', requestData);
+    
     const response = await fetch(`${SUPABASE_URL}/functions/v1/generate-pdf`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'apikey': SUPABASE_PUBLISHABLE_KEY
+        'Authorization': `Bearer ${SUPABASE_PUBLISHABLE_KEY}`
       },
-      body: JSON.stringify({ requestData }),
+      body: JSON.stringify(requestData),
     });
     
     if (!response.ok) {
-      console.error('PDF generation failed:', await response.text());
+      const errorText = await response.text();
+      console.error('PDF generation failed:', errorText);
       throw new Error('Failed to generate PDF');
     }
     

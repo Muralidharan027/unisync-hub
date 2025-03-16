@@ -15,10 +15,10 @@ interface ProfileBase {
   role: UserRole;
   full_name: string | null;
   email: string;
-  phone?: string | null;
-  department?: string | null;
-  avatar_url?: string | null;
-  persist_data?: boolean | null;
+  phone: string | null;
+  department: string | null;
+  avatar_url: string | null;
+  persist_data: boolean | null;
   created_at?: string;
   updated_at?: string;
 }
@@ -153,6 +153,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             console.log("Profile data:", profileData);
             setProfile(profileData as Profile);
             localStorage.setItem("userRole", profileData.role);
+            localStorage.setItem("userEmail", profileData.email);
           } else {
             console.log("No profile found for user:", user.id);
           }
@@ -184,13 +185,43 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const signIn = async (email: string, password: string, roleData?: { role: UserRole; id?: string }) => {
     try {
       setLoading(true);
-      console.log("Attempting sign in with:", email);
+      console.log("Attempting sign in with:", email, "for role:", roleData?.role || "any");
       
       if (process.env.NODE_ENV === 'development' && !import.meta.env.VITE_USE_SUPABASE) {
         // Simulate authentication delay
         await new Promise(resolve => setTimeout(resolve, 1000));
         
-        // Check if credentials match mock users
+        // Check if there are any users in localStorage we've created
+        const storedUsers = localStorage.getItem('mockUsers');
+        const mockUsers = storedUsers ? JSON.parse(storedUsers) : {};
+        
+        // First check if this is a mock user we created during signup
+        if (mockUsers[email] && mockUsers[email].password === password) {
+          const userProfile = mockUsers[email].profile;
+          
+          // Validate role if specified
+          if (roleData && roleData.role && userProfile.role !== roleData.role) {
+            throw new Error(`This account is registered as a ${userProfile.role}, not a ${roleData.role}`);
+          }
+          
+          setUser({ id: userProfile.id, email: email });
+          setProfile(userProfile as Profile);
+          
+          // Save role and email to localStorage
+          localStorage.setItem("userRole", userProfile.role);
+          localStorage.setItem("userEmail", email);
+          
+          // Navigate to dashboard
+          navigate(`/${userProfile.role}/dashboard`);
+          
+          toast({
+            title: "Sign in successful",
+            description: `Welcome back, ${userProfile.full_name || 'User'}!`,
+          });
+          return;
+        }
+        
+        // Fall back to checking the predefined MOCK_USERS
         const role = roleData?.role || 'student';
         const mockUser = MOCK_USERS[role];
         
@@ -267,6 +298,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           
           // Save role in localStorage
           localStorage.setItem("userRole", profileData.role);
+          localStorage.setItem("userEmail", profileData.email);
           
           // Navigate to dashboard
           navigate(`/${profileData.role}/dashboard`);
@@ -312,57 +344,77 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         // Simulate signup delay
         await new Promise(resolve => setTimeout(resolve, 1000));
         
-        // Create mock user with the selected role
-        const mockUser = { ...MOCK_USERS[role] };
-        mockUser.email = email;
+        // Generate a UUID-like ID for the user
+        const mockUserId = `mock-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
         
-        // Update the profile data with user information
+        // Create profile based on role
+        let userProfile: Profile;
+        
         if (role === 'student') {
-          const studentProfile: StudentProfile = {
-            id: mockUser.id,
+          userProfile = {
+            id: mockUserId,
+            role: 'student',
+            full_name: userData.fullName,
+            email: email,
             student_id: userData.id || null,
             staff_id: null,
             admin_id: null,
-            full_name: userData.fullName,
-            email: email,
-            role: 'student',
             phone: null,
-            avatar_url: null
+            department: null,
+            avatar_url: null,
+            persist_data: true,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
           };
-          
-          mockUser.profile = studentProfile;
         } else if (role === 'staff') {
-          const staffProfile: StaffProfile = {
-            id: mockUser.id,
-            student_id: null,
-            staff_id: 'STAFF' + Math.floor(1000 + Math.random() * 9000),
-            admin_id: null,
+          userProfile = {
+            id: mockUserId,
+            role: 'staff',
             full_name: userData.fullName,
             email: email,
-            role: 'staff',
+            student_id: null,
+            staff_id: `STAFF${Math.floor(1000 + Math.random() * 9000)}`,
+            admin_id: null,
             phone: null,
-            avatar_url: null
+            department: null,
+            avatar_url: null,
+            persist_data: true,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
           };
-          
-          mockUser.profile = staffProfile;
-        } else if (role === 'admin') {
-          const adminProfile: AdminProfile = {
-            id: mockUser.id,
+        } else {
+          userProfile = {
+            id: mockUserId,
+            role: 'admin',
+            full_name: userData.fullName,
+            email: email,
             student_id: null,
             staff_id: null,
-            admin_id: 'ADMIN' + Math.floor(1000 + Math.random() * 9000),
-            full_name: userData.fullName,
-            email: email,
-            role: 'admin',
+            admin_id: `ADMIN${Math.floor(1000 + Math.random() * 9000)}`,
             phone: null,
-            avatar_url: null
+            department: null,
+            avatar_url: null,
+            persist_data: true,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
           };
-          
-          mockUser.profile = adminProfile;
         }
         
-        setUser(mockUser);
-        setProfile(mockUser.profile as Profile);
+        // Store the user in localStorage for future sign-ins
+        const storedUsers = localStorage.getItem('mockUsers');
+        const mockUsers = storedUsers ? JSON.parse(storedUsers) : {};
+        
+        // Add this user to our mock database
+        mockUsers[email] = {
+          password,
+          profile: userProfile
+        };
+        
+        localStorage.setItem('mockUsers', JSON.stringify(mockUsers));
+        
+        // Set the current user and profile
+        setUser({ id: mockUserId, email });
+        setProfile(userProfile);
         
         // Save role and email to localStorage
         localStorage.setItem("userRole", role);
@@ -408,7 +460,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (data.user) {
           console.log("User created successfully:", data.user);
           
-          // For development purposes, let's immediately sign in the user
+          // For development purposes, immediately sign in the user
           try {
             const { data: sessionData, error: sessionError } = await supabase.auth.signInWithPassword({
               email,
@@ -439,6 +491,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                 console.log("Found existing profile:", profileData);
                 setProfile(profileData as Profile);
                 
+                // Save user info to localStorage as well
+                localStorage.setItem("userRole", profileData.role);
+                localStorage.setItem("userEmail", profileData.email);
+                
                 // Navigate to dashboard
                 navigate(`/${profileData.role}/dashboard`);
                 
@@ -459,6 +515,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                   if (retryProfileData) {
                     console.log("Retrieved profile on retry:", retryProfileData);
                     setProfile(retryProfileData as Profile);
+                    localStorage.setItem("userRole", retryProfileData.role);
+                    localStorage.setItem("userEmail", retryProfileData.email);
                     navigate(`/${retryProfileData.role}/dashboard`);
                   } else {
                     console.log("Could not retrieve profile after retry");
@@ -553,10 +611,31 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         // Simulate update password delay
         await new Promise(resolve => setTimeout(resolve, 1000));
         
-        toast({
-          title: "Password updated",
-          description: "Your password has been successfully updated.",
-        });
+        // Update mock user password if applicable
+        const storedUsers = localStorage.getItem('mockUsers');
+        if (storedUsers) {
+          const mockUsers = JSON.parse(storedUsers);
+          const userEmail = localStorage.getItem("userEmail");
+          
+          if (userEmail && mockUsers[userEmail]) {
+            if (mockUsers[userEmail].password === currentPassword) {
+              mockUsers[userEmail].password = newPassword;
+              localStorage.setItem('mockUsers', JSON.stringify(mockUsers));
+              
+              toast({
+                title: "Password updated",
+                description: "Your password has been successfully updated.",
+              });
+            } else {
+              throw new Error('Current password is incorrect');
+            }
+          }
+        } else {
+          toast({
+            title: "Password updated",
+            description: "Your password has been successfully updated.",
+          });
+        }
       } else {
         // Real Supabase password update
         try {
@@ -623,6 +702,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         
         setUser(null);
         setProfile(null);
+        localStorage.removeItem("userRole");
+        localStorage.removeItem("userEmail");
       }
       
       // Navigate to login
