@@ -39,32 +39,9 @@ export default function ProfileSettings({ role }: ProfileSettingsProps) {
     confirmPassword: '',
   });
 
-  const [persistData, setPersistData] = useState(false);
-
-  useEffect(() => {
-    // Create avatar storage bucket if it doesn't exist
-    const createAvatarBucket = async () => {
-      try {
-        // Check if the bucket exists
-        const { data, error } = await supabase.storage.getBucket('avatars');
-        
-        if (error && error.message.includes('does not exist')) {
-          // Create the bucket
-          const { error: createError } = await supabase.storage.createBucket('avatars', {
-            public: true,
-            fileSizeLimit: 1024 * 1024 * 2, // 2MB limit
-          });
-          
-          if (createError) throw createError;
-          console.log('Created avatars bucket');
-        }
-      } catch (error) {
-        console.error('Error checking/creating avatar bucket:', error);
-      }
-    };
-    
-    createAvatarBucket();
-  }, []);
+  const [persistData, setPersistData] = useState(() => {
+    return localStorage.getItem('persistUserData') === 'true';
+  });
 
   useEffect(() => {
     if (profile) {
@@ -76,8 +53,6 @@ export default function ProfileSettings({ role }: ProfileSettingsProps) {
         profilePicture: profile.avatar_url || '',
         id: profile.student_id || profile.staff_id || profile.admin_id || '',
       });
-      
-      setPersistData(profile.persist_data || false);
     }
   }, [profile]);
 
