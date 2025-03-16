@@ -1,16 +1,22 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
-import { Laptop, Smartphone, LogOut } from 'lucide-react';
+import { Laptop, Smartphone, LogOut, Shield } from 'lucide-react';
+import { useAuth } from '@/contexts/AuthContext';
+import { supabase } from '@/integrations/supabase/client';
+import { useToast } from '@/hooks/use-toast';
 
 export default function SecuritySettings() {
+  const { user, profile } = useAuth();
+  const { toast } = useToast();
   const [twoFactorEnabled, setTwoFactorEnabled] = useState(false);
+  const [loading, setLoading] = useState(false);
   
-  // Mock active sessions data
-  const activeSessions = [
+  // Session state
+  const [activeSessions, setActiveSessions] = useState([
     {
       id: 1,
       device: 'Chrome on Windows',
@@ -27,20 +33,91 @@ export default function SecuritySettings() {
       icon: <Smartphone className="h-4 w-4" />,
       isCurrent: false,
     },
-  ];
+  ]);
 
-  const handleLogout = (sessionId: number) => {
-    // In a real app, you would call an API to log out the session
-    console.log(`Logging out session ${sessionId}`);
+  useEffect(() => {
+    const fetchSecuritySettings = async () => {
+      if (!user) return;
+      
+      try {
+        // In a real app, we'd fetch the 2FA status from Supabase or your auth provider
+        // For now, we'll just simulate it
+        // Example: const { data } = await supabase.from('security_settings').select('two_factor_enabled').eq('user_id', user.id).single();
+        // setTwoFactorEnabled(data?.two_factor_enabled || false);
+        
+        // Fetch active sessions (this would be a real API call in production)
+        // For now, we just use mock data
+      } catch (error) {
+        console.error('Error fetching security settings:', error);
+        toast({
+          title: 'Error',
+          description: 'Failed to load security settings',
+          variant: 'destructive',
+        });
+      }
+    };
+    
+    fetchSecuritySettings();
+  }, [user, toast]);
+
+  const handleLogout = async (sessionId: number) => {
+    setLoading(true);
+    try {
+      // In a real app, you would call an API to log out the specific session
+      console.log(`Logging out session ${sessionId}`);
+      
+      // Mock update of sessions list
+      setActiveSessions(prev => prev.filter(session => session.id !== sessionId));
+      
+      toast({
+        title: 'Success',
+        description: 'Session logged out successfully',
+      });
+    } catch (error) {
+      console.error('Error logging out session:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to log out session',
+        variant: 'destructive',
+      });
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const handleToggleTwoFactor = (checked: boolean) => {
-    setTwoFactorEnabled(checked);
-    // In a real app, you would initialize the 2FA setup flow
-    if (checked) {
-      console.log('Initializing 2FA setup');
-    } else {
-      console.log('Disabling 2FA');
+  const handleToggleTwoFactor = async (checked: boolean) => {
+    setLoading(true);
+    try {
+      setTwoFactorEnabled(checked);
+      
+      // In a real app, you would initialize the 2FA setup flow or disable it
+      if (checked) {
+        console.log('Initializing 2FA setup');
+        // Example: await supabase.from('security_settings').upsert({ user_id: user.id, two_factor_enabled: true });
+        
+        toast({
+          title: '2FA Enabled',
+          description: 'Two-factor authentication has been enabled',
+        });
+      } else {
+        console.log('Disabling 2FA');
+        // Example: await supabase.from('security_settings').upsert({ user_id: user.id, two_factor_enabled: false });
+        
+        toast({
+          title: '2FA Disabled',
+          description: 'Two-factor authentication has been disabled',
+        });
+      }
+    } catch (error) {
+      console.error('Error toggling 2FA:', error);
+      setTwoFactorEnabled(!checked); // Revert the toggle if there's an error
+      toast({
+        title: 'Error',
+        description: 'Failed to update two-factor authentication',
+        variant: 'destructive',
+      });
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -72,7 +149,39 @@ export default function SecuritySettings() {
               id="two-factor"
               checked={twoFactorEnabled}
               onCheckedChange={handleToggleTwoFactor}
+              disabled={loading}
             />
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Password Protection</CardTitle>
+          <CardDescription>
+            Enhance your account security with strong password practices.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="flex items-center justify-between space-x-4 rounded-md border p-4">
+            <div className="flex items-start space-x-4">
+              <div className="rounded-full bg-primary/10 p-2">
+                <Shield className="h-4 w-4 text-primary" />
+              </div>
+              <div>
+                <p className="text-sm font-medium">Password Reset</p>
+                <p className="text-xs text-muted-foreground">
+                  Reset your password if you suspect unauthorized access to your account.
+                </p>
+              </div>
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => window.location.href = '/auth/forgot-password'}
+            >
+              Reset
+            </Button>
           </div>
         </CardContent>
       </Card>
@@ -110,6 +219,7 @@ export default function SecuritySettings() {
                   variant="outline"
                   size="sm"
                   onClick={() => handleLogout(session.id)}
+                  disabled={loading}
                 >
                   <LogOut className="mr-2 h-4 w-4" />
                   Logout

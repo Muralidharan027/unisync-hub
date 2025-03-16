@@ -300,7 +300,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             email: email,
             role: 'student',
             phone: null,
-            avatar_url: null
+            department: null,
+            avatar_url: null,
+            persist_data: false
           };
           
           mockUser.profile = studentProfile;
@@ -314,7 +316,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             email: email,
             role: 'staff',
             phone: null,
-            avatar_url: null
+            department: null,
+            avatar_url: null,
+            persist_data: false
           };
           
           mockUser.profile = staffProfile;
@@ -328,7 +332,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             email: email,
             role: 'admin',
             phone: null,
-            avatar_url: null
+            department: null,
+            avatar_url: null,
+            persist_data: false
           };
           
           mockUser.profile = adminProfile;
