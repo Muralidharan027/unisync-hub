@@ -1,10 +1,8 @@
-
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card";
 import { format } from "date-fns";
 import { Check, Download, X } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
 
 export interface LeaveRequest {
   id: string;

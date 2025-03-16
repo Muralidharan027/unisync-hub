@@ -26,3 +26,27 @@ export const getStorageUrl = (bucket: string, path: string): string => {
 export const getEdgeFunctionUrl = (functionName: string): string => {
   return `${SUPABASE_URL}/functions/v1/${functionName}`;
 };
+
+// Function to call the generate-pdf edge function
+export const generatePdf = async (requestData: any): Promise<Blob> => {
+  try {
+    const response = await fetch(`${SUPABASE_URL}/functions/v1/generate-pdf`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'apikey': SUPABASE_PUBLISHABLE_KEY
+      },
+      body: JSON.stringify({ requestData }),
+    });
+    
+    if (!response.ok) {
+      console.error('PDF generation failed:', await response.text());
+      throw new Error('Failed to generate PDF');
+    }
+    
+    return await response.blob();
+  } catch (error) {
+    console.error('Error calling generate-pdf function:', error);
+    throw error;
+  }
+};

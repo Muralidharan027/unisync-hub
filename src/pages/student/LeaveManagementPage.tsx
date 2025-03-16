@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { FileClock, FileText, PlusCircle } from "lucide-react";
 import { ModuleTabs } from "@/components/ui/module-tabs";
@@ -9,7 +8,7 @@ import { LeaveRequest } from "@/components/leave/LeaveRequestCard";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
 import { addLeaveRequest, getLeaveRequests } from "@/store/leaveRequests";
-import { supabase } from "@/integrations/supabase/client";
+import { supabase, generatePdf } from "@/integrations/supabase/client";
 
 export default function StudentLeaveManagementPage() {
   const [activeTab, setActiveTab] = useState("history");
@@ -54,11 +53,11 @@ export default function StudentLeaveManagementPage() {
               details: req.details || '',
               startDate: new Date(req.start_date),
               endDate: new Date(req.end_date),
-              status: req.status,
+              status: req.status as 'pending' | 'approved' | 'rejected' | 'acknowledged',
               studentName: profile.full_name || "Unknown Student",
               studentId: profile.student_id || "Unknown ID",
               submittedAt: new Date(req.created_at),
-              // Additional fields
+              // Additional fields with fallbacks
               senderName: req.sender_name || profile.full_name || "",
               registerNumber: req.register_number || profile.student_id || "",
               classYear: req.class_year || "",
@@ -66,6 +65,7 @@ export default function StudentLeaveManagementPage() {
               rollNumber: req.roll_number || "",
               staffEmail: req.staff_email || "",
               adminEmail: req.admin_email || "",
+              department: req.department || "Computer Science",
               periods: req.periods
             }));
             
@@ -266,22 +266,10 @@ export default function StudentLeaveManagementPage() {
         throw new Error("Request not found");
       }
       
-      // Call the serverless function to generate PDF
-      const response = await fetch('https://fahqlerywybttjinbanp.functions.supabase.co/generate-pdf', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZhaHFsZXJ5d3lidHRqaW5iYW5wIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDE4NTczODEsImV4cCI6MjA1NzQzMzM4MX0.4tkhXB8BYlkAQlmkYYvfuK8gPjoGQztY2xhGbko3fcU'
-        },
-        body: JSON.stringify({ requestData }),
-      });
+      console.log("Sending request data for PDF generation:", requestData);
       
-      if (!response.ok) {
-        throw new Error('Failed to generate PDF');
-      }
-      
-      // Get the PDF as a blob
-      const blob = await response.blob();
+      // Use the helper function from client.ts to generate PDF
+      const blob = await generatePdf(requestData);
       
       // Create a download link
       const url = URL.createObjectURL(blob);

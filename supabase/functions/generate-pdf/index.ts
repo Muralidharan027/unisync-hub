@@ -15,22 +15,19 @@ serve(async (req) => {
   }
 
   try {
-    // Extract request data - supporting both formats for backward compatibility
-    let requestData;
+    // Extract request data
     const body = await req.json();
+    const requestData = body.requestData;
     
-    if (body.requestData) {
-      requestData = body.requestData;
-    } else if (body.requestId) {
-      // Handle the case where only requestId is provided (from LeaveRequestCard)
-      // In a real app, we would fetch the request from the database using the ID
+    if (!requestData) {
+      console.error("Missing request data in the request body:", body);
       return new Response(
         JSON.stringify({ error: 'Request data is required' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
-    } else {
-      throw new Error('Invalid request format');
     }
+    
+    console.log("Received request data:", JSON.stringify(requestData));
     
     // Create a new PDF document
     const pdfDoc = await PDFDocument.create();
@@ -117,8 +114,19 @@ serve(async (req) => {
     const nameToUse = requestData.senderName || requestData.studentName;
     const idToUse = requestData.registerNumber || requestData.studentId;
     
+    // Safely handle dates
+    let startDateStr, endDateStr;
+    try {
+      startDateStr = new Date(requestData.startDate).toLocaleDateString();
+      endDateStr = new Date(requestData.endDate).toLocaleDateString();
+    } catch (e) {
+      console.error("Date parsing error:", e);
+      startDateStr = "Invalid date";
+      endDateStr = "Invalid date";
+    }
+    
     // Construct the body text with proper line breaks
-    const bodyText = `I, ${nameToUse}, with register number ${idToUse}, am writing to formally request ${requestData.type.toLowerCase()} from ${new Date(requestData.startDate).toLocaleDateString()} to ${new Date(requestData.endDate).toLocaleDateString()} due to the following reason:`;
+    const bodyText = `I, ${nameToUse}, with register number ${idToUse}, am writing to formally request ${requestData.type.toLowerCase()} from ${startDateStr} to ${endDateStr} due to the following reason:`;
     
     // Calculate line width and wrap text if needed
     const lineWidth = width - 100; // 50px margin on each side
@@ -230,7 +238,7 @@ serve(async (req) => {
   } catch (error) {
     console.error('PDF generation error:', error);
     return new Response(
-      JSON.stringify({ error: 'Failed to generate PDF' }),
+      JSON.stringify({ error: 'Failed to generate PDF', details: error.message }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }
