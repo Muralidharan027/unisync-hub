@@ -15,6 +15,7 @@ export default function SettingsPage() {
         <Route path="notifications" element={<NotificationSettings />} />
         <Route path="appearance" element={<AppearanceSettings />} />
         <Route path="security" element={<SecuritySettings />} />
+        <Route path="/" element={<Navigate to="profile" replace />} />
         <Route path="*" element={<Navigate to="profile" replace />} />
       </Routes>
     </SettingsLayout>

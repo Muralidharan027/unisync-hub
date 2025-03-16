@@ -17,6 +17,7 @@ export default function SettingsPage() {
         <Route path="appearance" element={<AppearanceSettings />} />
         <Route path="security" element={<SecuritySettings />} />
         <Route path="users" element={<UserManagementSettings />} />
+        <Route path="/" element={<Navigate to="profile" replace />} />
         <Route path="*" element={<Navigate to="profile" replace />} />
       </Routes>
     </SettingsLayout>

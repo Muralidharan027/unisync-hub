@@ -1,6 +1,6 @@
 
 import React, { ReactNode, useState, useEffect } from 'react';
-import { Outlet, Link, useLocation, useParams, useNavigate } from 'react-router-dom';
+import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 import { buttonVariants } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
@@ -11,13 +11,15 @@ interface SettingsLayoutProps {
 }
 
 export default function SettingsLayout({ children }: SettingsLayoutProps) {
-  const { role } = useParams<{ role: string }>();
   const location = useLocation();
   const navigate = useNavigate();
   const { profile } = useAuth();
   
+  // Extract role from the URL path
+  const role = location.pathname.split('/')[1];
+  
   useEffect(() => {
-    // If path is just /settings, redirect to /settings/profile
+    // If path is just /role/settings, redirect to /role/settings/profile
     if (location.pathname === `/${role}/settings`) {
       navigate(`/${role}/settings/profile`);
     }
