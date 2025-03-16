@@ -18,6 +18,15 @@ export interface LeaveRequest {
   studentId: string;
   submittedAt: Date;
   periods?: number; // For OD requests
+  // New fields
+  senderName?: string;
+  registerNumber?: string;
+  classYear?: string;
+  section?: string;
+  rollNumber?: string;
+  staffEmail?: string;
+  adminEmail?: string;
+  department?: string;
 }
 
 interface LeaveRequestCardProps {
@@ -47,7 +56,15 @@ const LeaveRequestCard = ({
     status,
     studentName,
     submittedAt,
-    periods
+    periods,
+    // New fields
+    senderName,
+    registerNumber,
+    classYear,
+    section,
+    rollNumber,
+    staffEmail,
+    adminEmail
   } = request;
 
   const statusColors = {
@@ -62,34 +79,6 @@ const LeaveRequestCard = ({
   const handleDownload = async () => {
     if (onDownload) {
       onDownload(id);
-      
-      try {
-        // Call the Supabase Edge Function to generate the PDF
-        const { data, error } = await supabase.functions.invoke('generate-pdf', {
-          body: { requestId: id }
-        });
-        
-        if (error) {
-          console.error('Error generating PDF:', error);
-          return;
-        }
-        
-        // Create a blob from the PDF data and download it
-        const blob = new Blob([data], { type: 'application/pdf' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        
-        a.href = url;
-        a.download = `${type}_request_${id}.pdf`;
-        document.body.appendChild(a);
-        a.click();
-        
-        // Clean up
-        URL.revokeObjectURL(url);
-        document.body.removeChild(a);
-      } catch (error) {
-        console.error('Error downloading PDF:', error);
-      }
     }
   };
   
@@ -113,7 +102,15 @@ const LeaveRequestCard = ({
       </CardHeader>
       <CardContent className="text-sm">
         <div className="mb-2">
-          <span className="font-medium">Student:</span> {studentName}
+          <span className="font-medium">Student:</span> {senderName || studentName}
+          {(classYear || section) && (
+            <span className="ml-2">
+              ({classYear && `Year ${classYear}`}{classYear && section && ", "}{section && `Section ${section}`})
+            </span>
+          )}
+          {rollNumber && (
+            <span className="ml-2">Roll: {rollNumber}</span>
+          )}
         </div>
         
         <div className="mb-2">
@@ -132,9 +129,27 @@ const LeaveRequestCard = ({
           <span className="font-medium">Reason:</span> {reason}
         </div>
         
-        <div className="mb-2">
-          <span className="font-medium">Details:</span> {details}
-        </div>
+        {details && (
+          <div className="mb-2">
+            <span className="font-medium">Details:</span> {details}
+          </div>
+        )}
+        
+        {(staffEmail || adminEmail) && role !== 'student' && (
+          <div className="mb-2 mt-3 pt-2 border-t border-gray-200 dark:border-gray-700">
+            <h4 className="font-medium mb-1">Recipients:</h4>
+            {staffEmail && (
+              <div className="text-xs">
+                <span className="font-medium">Staff:</span> {staffEmail}
+              </div>
+            )}
+            {adminEmail && (
+              <div className="text-xs">
+                <span className="font-medium">Admin/HOD:</span> {adminEmail}
+              </div>
+            )}
+          </div>
+        )}
       </CardContent>
 
       <CardFooter className="flex justify-end gap-2">

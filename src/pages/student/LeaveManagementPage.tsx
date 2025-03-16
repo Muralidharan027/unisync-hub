@@ -9,6 +9,7 @@ import { LeaveRequest } from "@/components/leave/LeaveRequestCard";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
 import { addLeaveRequest, getLeaveRequests } from "@/store/leaveRequests";
+import { supabase } from "@/integrations/supabase/client";
 
 export default function StudentLeaveManagementPage() {
   const [activeTab, setActiveTab] = useState("history");
@@ -26,10 +27,67 @@ export default function StudentLeaveManagementPage() {
   // Load leave requests that belong to the current student
   useEffect(() => {
     if (profile) {
-      const studentRequests = getLeaveRequests().filter(
-        req => req.studentId === profile.student_id
-      );
-      setRequests(studentRequests);
+      const loadRequests = async () => {
+        try {
+          // First try to load from Supabase if available
+          const { data: supabaseRequests, error } = await supabase
+            .from('leave_requests')
+            .select('*')
+            .eq('user_id', profile.id);
+          
+          if (error) {
+            console.error("Error loading requests from Supabase:", error);
+            // Fallback to local storage if Supabase query fails
+            const localRequests = getLeaveRequests().filter(
+              req => req.studentId === profile.student_id
+            );
+            setRequests(localRequests);
+            return;
+          }
+          
+          if (supabaseRequests && supabaseRequests.length > 0) {
+            // Convert Supabase data format to LeaveRequest format
+            const formattedRequests: LeaveRequest[] = supabaseRequests.map(req => ({
+              id: req.id,
+              type: req.type as 'leave' | 'od',
+              reason: req.reason,
+              details: req.details || '',
+              startDate: new Date(req.start_date),
+              endDate: new Date(req.end_date),
+              status: req.status,
+              studentName: profile.full_name || "Unknown Student",
+              studentId: profile.student_id || "Unknown ID",
+              submittedAt: new Date(req.created_at),
+              // Additional fields
+              senderName: req.sender_name || profile.full_name || "",
+              registerNumber: req.register_number || profile.student_id || "",
+              classYear: req.class_year || "",
+              section: req.section || "",
+              rollNumber: req.roll_number || "",
+              staffEmail: req.staff_email || "",
+              adminEmail: req.admin_email || "",
+              periods: req.periods
+            }));
+            
+            setRequests(formattedRequests);
+          } else {
+            // Fallback to local storage if no Supabase data
+            const localRequests = getLeaveRequests().filter(
+              req => req.studentId === profile.student_id
+            );
+            setRequests(localRequests);
+          }
+        } catch (err) {
+          console.error("Error in useEffect:", err);
+          // Fallback to local storage on any error
+          const localRequests = getLeaveRequests().filter(
+            req => req.studentId === profile.student_id
+          );
+          setRequests(localRequests);
+        }
+      };
+      
+      loadRequests();
     }
   }, [profile]);
   
@@ -40,7 +98,13 @@ export default function StudentLeaveManagementPage() {
         const studentRequests = getLeaveRequests().filter(
           req => req.studentId === profile.student_id
         );
-        setRequests(studentRequests);
+        setRequests(prev => {
+          // Only update if there's a difference
+          if (JSON.stringify(prev) !== JSON.stringify(studentRequests)) {
+            return studentRequests;
+          }
+          return prev;
+        });
       }
     };
     
@@ -50,11 +114,11 @@ export default function StudentLeaveManagementPage() {
     return () => clearInterval(interval);
   }, [profile]);
   
-  const handleSubmitLeaveRequest = (data: LeaveRequestData) => {
+  const handleSubmitLeaveRequest = async (data: LeaveRequestData) => {
     setSubmitting(true);
     
-    // Simulate API call
-    setTimeout(() => {
+    try {
+      // Create request object
       const newRequest: LeaveRequest = {
         id: `request-${Date.now()}`,
         type: data.type,
@@ -63,19 +127,84 @@ export default function StudentLeaveManagementPage() {
         startDate: data.startDate,
         endDate: data.endDate,
         status: "pending",
-        studentName: profile?.full_name || "Unknown Student",
-        studentId: profile?.student_id || "Unknown ID",
+        studentName: profile?.full_name || data.senderName || "Unknown Student",
+        studentId: profile?.student_id || data.registerNumber || "Unknown ID",
         submittedAt: new Date(),
-        periods: data.type === 'od' ? data.periods : undefined
+        periods: data.type === 'od' ? data.periods : undefined,
+        // Additional fields
+        senderName: data.senderName,
+        registerNumber: data.registerNumber,
+        classYear: data.classYear,
+        section: data.section,
+        rollNumber: data.rollNumber,
+        staffEmail: data.staffEmail,
+        adminEmail: data.adminEmail
       };
       
-      // Add to global store
-      addLeaveRequest(newRequest);
+      // Try to store in Supabase first
+      let savedToSupabase = false;
+      
+      if (profile && profile.id) {
+        try {
+          const { data: insertedData, error } = await supabase
+            .from('leave_requests')
+            .insert({
+              type: newRequest.type,
+              reason: newRequest.reason,
+              details: newRequest.details,
+              start_date: newRequest.startDate.toISOString(),
+              end_date: newRequest.endDate.toISOString(),
+              status: newRequest.status,
+              user_id: profile.id,
+              periods: newRequest.periods,
+              // Additional fields
+              sender_name: newRequest.senderName,
+              register_number: newRequest.registerNumber,
+              class_year: newRequest.classYear,
+              section: newRequest.section,
+              roll_number: newRequest.rollNumber,
+              staff_email: newRequest.staffEmail,
+              admin_email: newRequest.adminEmail
+            })
+            .select()
+            .single();
+          
+          if (error) {
+            console.error("Error saving to Supabase:", error);
+          } else {
+            savedToSupabase = true;
+            // Update the ID to use the Supabase-generated UUID
+            newRequest.id = insertedData.id;
+            
+            // Send email notification using edge function
+            try {
+              const { error: emailError } = await supabase.functions.invoke('send-leave-email', {
+                body: { leaveData: newRequest }
+              });
+              
+              if (emailError) {
+                console.error("Error sending email notification:", emailError);
+              } else {
+                console.log("Email notification sent successfully");
+              }
+            } catch (emailErr) {
+              console.error("Error calling email function:", emailErr);
+            }
+          }
+        } catch (err) {
+          console.error("Error in Supabase save operation:", err);
+        }
+      }
+      
+      // Fallback to local storage if Supabase save failed
+      if (!savedToSupabase) {
+        // Add to global store
+        addLeaveRequest(newRequest);
+      }
       
       // Update local state
       setRequests(prev => [...prev, newRequest]);
       
-      setSubmitting(false);
       toast({
         title: "Request Submitted",
         description: `Your ${data.type === 'leave' ? 'leave' : 'OD'} request has been submitted successfully.`,
@@ -83,7 +212,16 @@ export default function StudentLeaveManagementPage() {
       
       // Switch to history tab after successful submission
       setActiveTab("history");
-    }, 1500);
+    } catch (error) {
+      console.error("Error submitting request:", error);
+      toast({
+        title: "Submission Failed",
+        description: "There was an error submitting your request. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setSubmitting(false);
+    }
   };
   
   const handleSaveDraft = (data: LeaveRequestData) => {

@@ -16,3 +16,8 @@ export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABL
     detectSessionInUrl: true
   }
 });
+
+// Function to get storage URL for files
+export const getStorageUrl = (bucket: string, path: string): string => {
+  return `${SUPABASE_URL}/storage/v1/object/public/${bucket}/${path}`;
+};
