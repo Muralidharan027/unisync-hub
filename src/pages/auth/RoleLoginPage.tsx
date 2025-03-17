@@ -1,6 +1,5 @@
 
-import { useParams, Navigate } from 'react-router-dom';
-import { useEffect } from 'react';
+import { useParams, Navigate, useEffect } from 'react-router-dom';
 import LoginForm from './LoginForm';
 import { toast } from '@/hooks/use-toast';
 
@@ -48,7 +47,7 @@ export default function RoleLoginPage() {
           <p className="text-sm">Please use your college email address (e.g., name@gurunanakcollege.edu.in)</p>
         </div>
       )}
-      <LoginForm role={role as 'student' | 'staff' | 'admin'} />
+      <LoginForm role={role} />
     </>
   );
 }
