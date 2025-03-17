@@ -3,7 +3,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import RoleSelection from "./pages/auth/RoleSelection";
 import LoginPage from "./pages/auth/LoginPage";
 import RoleLoginPage from "./pages/auth/RoleLoginPage";
@@ -12,6 +12,7 @@ import ForgotPasswordPage from "./pages/auth/ForgotPasswordPage";
 import ResetPasswordPage from "./pages/auth/ResetPasswordPage";
 import { AuthProvider } from "./contexts/AuthContext";
 import ProtectedRoute from "./components/auth/ProtectedRoute";
+import Index from "./pages/Index";
 
 // Student Pages
 import StudentDashboard from "./pages/student/DashboardPage";
@@ -41,9 +42,11 @@ const App = () => (
       <BrowserRouter>
         <AuthProvider>
           <Routes>
-            <Route path="/" element={<RoleSelection />} />
+            {/* Homepage */}
+            <Route path="/" element={<Index />} />
             
             {/* Auth Routes */}
+            <Route path="/auth" element={<RoleSelection />} />
             <Route path="/auth/login" element={<LoginPage />} />
             <Route path="/auth/:role/login" element={<RoleLoginPage />} />
             <Route path="/auth/signup" element={<SignupPage />} />
@@ -151,6 +154,9 @@ const App = () => (
                 </ProtectedRoute>
               } 
             />
+
+            {/* Fallback route for any unmatched routes */}
+            <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </AuthProvider>
       </BrowserRouter>
