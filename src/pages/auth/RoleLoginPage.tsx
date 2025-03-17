@@ -1,6 +1,5 @@
 
-import { useParams, Navigate } from 'react-router-dom';
-import { useEffect } from 'react';
+import { useParams, Navigate, useEffect } from 'react-router-dom';
 import LoginForm from './LoginForm';
 import { toast } from '@/hooks/use-toast';
 
