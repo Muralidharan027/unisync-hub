@@ -1,6 +1,7 @@
 
-import { useParams, Navigate } from 'react-router-dom';
+import { useParams, Navigate, useEffect } from 'react-router-dom';
 import LoginForm from './LoginForm';
+import { toast } from '@/hooks/use-toast';
 
 export default function RoleLoginPage() {
   // Get the role from URL parameters
@@ -10,6 +11,27 @@ export default function RoleLoginPage() {
   if (role !== 'student' && role !== 'staff' && role !== 'admin') {
     return <Navigate to="/auth/login" replace />;
   }
+  
+  // On development mode, show login credentials in toast
+  useEffect(() => {
+    if (process.env.NODE_ENV === 'development') {
+      let loginInfo = '';
+      
+      if (role === 'student') {
+        loginInfo = 'student@example.com / password123';
+      } else if (role === 'staff') {
+        loginInfo = 'staff@gurunanakcollege.edu.in / password123';
+      } else if (role === 'admin') {
+        loginInfo = 'admin@gurunanakcollege.edu.in / password123';
+      }
+      
+      toast({
+        title: `${role.charAt(0).toUpperCase() + role.slice(1)} Login`,
+        description: `For testing, use: ${loginInfo}`,
+        duration: 8000,
+      });
+    }
+  }, [role]);
   
   return (
     <>

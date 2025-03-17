@@ -1,4 +1,3 @@
-
 import { createContext, useContext, useState, useEffect, ReactNode } from "react";
 import { useNavigate } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
@@ -66,6 +65,7 @@ const MOCK_USERS = {
   student: {
     id: "student-123",
     email: "student@example.com",
+    password: "password123",
     profile: {
       id: "student-123",
       role: "student" as UserRole,
@@ -83,6 +83,7 @@ const MOCK_USERS = {
   staff: {
     id: "staff-123",
     email: "staff@gurunanakcollege.edu.in",
+    password: "password123",
     profile: {
       id: "staff-123",
       role: "staff" as UserRole,
@@ -100,6 +101,7 @@ const MOCK_USERS = {
   admin: {
     id: "admin-123",
     email: "admin@gurunanakcollege.edu.in",
+    password: "password123",
     profile: {
       id: "admin-123",
       role: "admin" as UserRole,
@@ -187,15 +189,56 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setLoading(true);
       console.log("Attempting sign in with:", email, "for role:", roleData?.role || "any");
       
-      if (process.env.NODE_ENV === 'development' && !import.meta.env.VITE_USE_SUPABASE) {
+      if (process.env.NODE_ENV === 'development' || !import.meta.env.VITE_USE_SUPABASE) {
         // Simulate authentication delay
         await new Promise(resolve => setTimeout(resolve, 1000));
         
-        // Check if there are any users in localStorage we've created
+        // For development, allow login with any of the mock users regardless of role
+        // First check if the email matches any of our mock users
+        for (const role of ['student', 'staff', 'admin'] as UserRole[]) {
+          const mockUser = MOCK_USERS[role];
+          
+          if (mockUser.email.toLowerCase() === email.toLowerCase() && mockUser.password === password) {
+            console.log(`Found matching mock user with role ${role}`);
+            
+            // Validate role if specified
+            if (roleData && roleData.role && role !== roleData.role) {
+              console.log(`Role mismatch - requested: ${roleData.role}, actual: ${role}`);
+              toast({
+                title: "Role mismatch",
+                description: `This account is registered as a ${role}, not a ${roleData.role}`,
+                variant: "destructive",
+              });
+              setLoading(false);
+              return;
+            }
+            
+            // Staff and Admin require college domain emails (skip check for development convenience)
+            
+            setUser({ id: mockUser.id, email: mockUser.email });
+            setProfile(mockUser.profile as Profile);
+            
+            // Save role and email to localStorage
+            localStorage.setItem("userRole", role);
+            localStorage.setItem("userEmail", mockUser.email);
+            
+            // Navigate to dashboard
+            navigate(`/${role}/dashboard`);
+            
+            toast({
+              title: "Sign in successful",
+              description: `Welcome back, ${mockUser.profile.full_name}!`,
+            });
+            
+            setLoading(false);
+            return; // Exit early on successful login
+          }
+        }
+        
+        // Also check mock users that might have been created during signup
         const storedUsers = localStorage.getItem('mockUsers');
         const mockUsers = storedUsers ? JSON.parse(storedUsers) : {};
         
-        // First check if this is a mock user we created during signup
         if (mockUsers[email] && mockUsers[email].password === password) {
           const userProfile = mockUsers[email].profile;
           
@@ -218,37 +261,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             title: "Sign in successful",
             description: `Welcome back, ${userProfile.full_name || 'User'}!`,
           });
+          setLoading(false);
           return;
         }
         
-        // Fall back to checking the predefined MOCK_USERS
-        const role = roleData?.role || 'student';
-        const mockUser = MOCK_USERS[role];
-        
-        if (mockUser && mockUser.email === email) {
-          // Staff and Admin require college domain emails
-          if ((role === 'staff' || role === 'admin') && 
-              !validateCollegeDomainEmail(email)) {
-            throw new Error(`${role} must use a college domain email`);
-          }
-          
-          setUser(mockUser);
-          setProfile(mockUser.profile as Profile);
-          
-          // Save role and email to localStorage
-          localStorage.setItem("userRole", role);
-          localStorage.setItem("userEmail", email);
-          
-          // Navigate to dashboard
-          navigate(`/${role}/dashboard`);
-          
-          toast({
-            title: "Sign in successful",
-            description: `Welcome back, ${mockUser.profile.full_name}!`,
-          });
-        } else {
-          throw new Error("Invalid login credentials");
-        }
+        // If we got here, no valid user was found
+        console.error("Invalid login credentials");
+        throw new Error("Invalid login credentials");
       } else {
         // Real Supabase authentication
         console.log("Signing in with Supabase:", { email, password });
@@ -724,6 +743,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setLoading(false);
     }
   };
+
+  // Add a helper function to show login credentials
+  const addDefaultCredentialsToast = () => {
+    toast({
+      title: "Development Mode",
+      description: "Use email: student@example.com, password: password123 to log in. Or register a new account.",
+      duration: 8000,
+    });
+  };
+
+  // Call this function whenever the app loads in development mode
+  useEffect(() => {
+    if (process.env.NODE_ENV === 'development' && !localStorage.getItem("credentialsShown")) {
+      addDefaultCredentialsToast();
+      localStorage.setItem("credentialsShown", "true");
+    }
+  }, []);
 
   return (
     <AuthContext.Provider value={{ 

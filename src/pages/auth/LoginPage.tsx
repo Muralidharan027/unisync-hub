@@ -1,5 +1,4 @@
-
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Button } from "@/components/ui/button";
 import {
@@ -35,6 +34,16 @@ export default function LoginPage() {
   const { toast } = useToast();
   const { signIn, loading } = useAuth();
   const navigate = useNavigate();
+
+  useEffect(() => {
+    if (process.env.NODE_ENV === 'development') {
+      toast({
+        title: "Development Mode",
+        description: "For testing, use: student@example.com / password123",
+        duration: 8000,
+      });
+    }
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
