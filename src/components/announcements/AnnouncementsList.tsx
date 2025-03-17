@@ -10,20 +10,25 @@ import { useAuth } from "@/contexts/AuthContext";
 import AnnouncementForm from "./AnnouncementForm";
 
 interface AnnouncementsListProps {
-  announcements: Announcement[];
-  role: 'student' | 'staff' | 'admin';
+  announcements?: Announcement[];
+  role?: 'student' | 'staff' | 'admin';
+  viewMode?: 'student' | 'staff' | 'admin';
   onSave?: (id: string) => void;
   onUpdate?: (id: string, data: Partial<Announcement>) => void;
   onDelete?: (id: string) => void;
 }
 
 const AnnouncementsList = ({ 
-  announcements, 
+  announcements = [], 
   role, 
+  viewMode = 'student',
   onSave, 
   onUpdate,
   onDelete 
 }: AnnouncementsListProps) => {
+  // Use the viewMode prop if role is not provided
+  const effectiveRole = role || viewMode;
+  
   const [searchTerm, setSearchTerm] = useState('');
   const [filterCategory, setFilterCategory] = useState<AnnouncementCategory | ''>('');
   const [editingAnnouncementId, setEditingAnnouncementId] = useState<string | null>(null);
@@ -196,7 +201,7 @@ const AnnouncementsList = ({
                   onEdit={onUpdate ? handleEditAnnouncement : undefined}
                   onDelete={onDelete}
                   currentUserId={profile?.id}
-                  role={role}
+                  role={effectiveRole}
                 />
               ))}
             </div>

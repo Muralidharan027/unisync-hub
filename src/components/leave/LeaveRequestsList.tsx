@@ -6,8 +6,9 @@ import LeaveRequestCard from "./LeaveRequestCard";
 import { FileText } from "lucide-react";
 
 type LeaveRequestsListProps = {
-  requests: LeaveRequest[];
-  role: 'student' | 'staff' | 'admin';
+  requests?: LeaveRequest[];
+  role?: 'student' | 'staff' | 'admin';
+  viewMode?: 'student' | 'staff' | 'admin';
   onDownload?: (id: string) => void;
   onApprove?: (id: string) => void;
   onReject?: (id: string) => void;
@@ -15,13 +16,17 @@ type LeaveRequestsListProps = {
 };
 
 const LeaveRequestsList = ({ 
-  requests, 
+  requests = [], 
   role, 
+  viewMode = 'student',
   onDownload,
   onApprove,
   onReject,
   onAcknowledge
 }: LeaveRequestsListProps) => {
+  // Use the viewMode prop if role is not provided
+  const effectiveRole = role || viewMode;
+  
   if (requests.length === 0) {
     return (
       <Card>
@@ -35,7 +40,7 @@ const LeaveRequestsList = ({
           <div className="flex flex-col items-center text-center">
             <FileText className="h-16 w-16 text-muted-foreground mb-4" />
             <p className="text-muted-foreground">
-              {role === 'student' 
+              {effectiveRole === 'student' 
                 ? 'Create a new request to view it here.' 
                 : 'There are no pending requests to review.'}
             </p>
@@ -51,7 +56,7 @@ const LeaveRequestsList = ({
         <LeaveRequestCard 
           key={request.id}
           request={request}
-          role={role}
+          role={effectiveRole}
           onDownload={onDownload}
           onApprove={onApprove}
           onReject={onReject}
