@@ -48,6 +48,11 @@ export default function SettingsLayout({ children }: SettingsLayoutProps) {
       label: 'Security',
       id: 'security',
     },
+    {
+      href: `/${role}/settings/activity`,
+      label: 'Activity',
+      id: 'activity',
+    },
   ];
   
   // Add User Management link only for admins

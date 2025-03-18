@@ -6,6 +6,7 @@ import ProfileSettings from '@/components/settings/ProfileSettings';
 import NotificationSettings from '@/components/settings/NotificationSettings';
 import AppearanceSettings from '@/components/settings/AppearanceSettings';
 import SecuritySettings from '@/components/settings/SecuritySettings';
+import ActivitySettings from '@/components/settings/ActivitySettings';
 
 export default function SettingsPage() {
   return (
@@ -15,6 +16,7 @@ export default function SettingsPage() {
         <Route path="notifications" element={<NotificationSettings />} />
         <Route path="appearance" element={<AppearanceSettings />} />
         <Route path="security" element={<SecuritySettings />} />
+        <Route path="activity" element={<ActivitySettings role="student" />} />
         <Route path="/" element={<Navigate to="profile" replace />} />
         <Route path="*" element={<Navigate to="profile" replace />} />
       </Routes>
