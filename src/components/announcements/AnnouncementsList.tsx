@@ -1,213 +1,237 @@
 
-import { useState } from "react";
-import { Input } from "@/components/ui/input";
-import AnnouncementCard, { Announcement, AnnouncementCategory } from "./AnnouncementCard";
-import { useToast } from "@/hooks/use-toast";
-import { Badge } from "@/components/ui/badge";
+import React, { useState, useEffect } from "react";
+import { Announcement } from "./AnnouncementCard";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import AnnouncementCard from "./AnnouncementCard";
+import { FileText, PlusCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Filter, Search, X } from "lucide-react";
-import { useAuth } from "@/contexts/AuthContext";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import AnnouncementForm from "./AnnouncementForm";
+import { getAnnouncements, addAnnouncement, updateAnnouncement, deleteAnnouncement } from "@/store/announcements";
+import { v4 as uuidv4 } from "uuid";
+import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/contexts/AuthContext";
+import { AnnouncementCategory } from "./AnnouncementCard";
 
-interface AnnouncementsListProps {
-  announcements?: Announcement[];
-  role?: 'student' | 'staff' | 'admin';
+type AnnouncementsListProps = {
   viewMode?: 'student' | 'staff' | 'admin';
-  onSave?: (id: string) => void;
-  onUpdate?: (id: string, data: Partial<Announcement>) => void;
-  onDelete?: (id: string) => void;
-}
+};
 
-const AnnouncementsList = ({ 
-  announcements = [], 
-  role, 
-  viewMode = 'student',
-  onSave, 
-  onUpdate,
-  onDelete 
-}: AnnouncementsListProps) => {
-  // Use the viewMode prop if role is not provided
-  const effectiveRole = role || viewMode;
-  
-  const [searchTerm, setSearchTerm] = useState('');
-  const [filterCategory, setFilterCategory] = useState<AnnouncementCategory | ''>('');
-  const [editingAnnouncementId, setEditingAnnouncementId] = useState<string | null>(null);
+const AnnouncementsList = ({ viewMode = 'student' }: AnnouncementsListProps) => {
+  const [announcements, setAnnouncements] = useState<Announcement[]>([]);
+  const [isFormOpen, setIsFormOpen] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [editingAnnouncement, setEditingAnnouncement] = useState<Announcement | null>(null);
   const { toast } = useToast();
   const { profile } = useAuth();
-
-  const handleSaveAnnouncement = (id: string) => {
-    if (onSave) {
-      onSave(id);
-    } else {
-      // In a real app, this would save to the user's preferences
-      toast({
-        title: "Announcement saved",
-        description: "The announcement has been saved to your bookmarks",
-      });
-    }
-  };
-
-  const handleShareAnnouncement = (id: string) => {
-    // In a real app, this would handle sharing functionality
-    navigator.clipboard.writeText(`UniSync Announcement #${id}`);
-    toast({
-      title: "Link copied",
-      description: "Announcement link copied to clipboard",
-    });
+  
+  useEffect(() => {
+    // Load announcements
+    loadAnnouncements();
+  }, [viewMode]);
+  
+  const loadAnnouncements = () => {
+    const allAnnouncements = getAnnouncements();
+    
+    // Sort by creation date (newest first)
+    allAnnouncements.sort((a, b) => 
+      new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+    );
+    
+    setAnnouncements(allAnnouncements);
   };
   
-  const handleEditAnnouncement = (id: string) => {
-    setEditingAnnouncementId(id);
-  };
-  
-  const handleUpdateAnnouncement = (
+  const handleCreateAnnouncement = async (
     title: string, 
     content: string, 
-    category: AnnouncementCategory,
+    category: AnnouncementCategory, 
     file?: File
   ) => {
-    if (editingAnnouncementId && onUpdate) {
-      // Prepare file data if provided
-      let fileData = {};
-      if (file) {
-        // In a real app, we would upload the file to storage and get URL
-        // For demo, create an object URL
-        const fileUrl = URL.createObjectURL(file);
-        fileData = {
-          fileUrl,
-          fileName: file.name
-        };
-      }
+    setIsSubmitting(true);
+    
+    try {
+      // For file handling in a real app, you'd upload the file to storage
+      // and get back a URL. Here we'll just use a mock URL if a file is provided
+      const fileUrl = file ? URL.createObjectURL(file) : undefined;
       
-      onUpdate(editingAnnouncementId, {
+      // Create a new announcement object
+      const newAnnouncement: Announcement = {
+        id: editingAnnouncement?.id || uuidv4(),
         title,
         content,
         category,
-        ...fileData
-      });
+        createdAt: editingAnnouncement?.createdAt || new Date(),
+        createdBy: profile?.full_name || 'Anonymous',
+        creatorId: profile?.id,
+        fileName: file?.name || editingAnnouncement?.fileName,
+        fileUrl: fileUrl || editingAnnouncement?.fileUrl
+      };
       
-      setEditingAnnouncementId(null);
+      if (editingAnnouncement) {
+        // Update existing announcement
+        updateAnnouncement(editingAnnouncement.id, newAnnouncement);
+        toast({
+          title: "Announcement Updated",
+          description: "The announcement has been updated successfully.",
+        });
+      } else {
+        // Add new announcement
+        addAnnouncement(newAnnouncement);
+        toast({
+          title: "Announcement Created",
+          description: "The announcement has been created successfully.",
+        });
+      }
       
+      // Update the local state
+      loadAnnouncements();
+      
+      // Close the form and reset editing state
+      setIsFormOpen(false);
+      setEditingAnnouncement(null);
+    } catch (error) {
+      console.error("Error creating/updating announcement:", error);
       toast({
-        title: "Announcement updated",
-        description: "Your announcement has been updated successfully",
+        title: "Error",
+        description: "Failed to save announcement. Please try again.",
+        variant: "destructive",
       });
+    } finally {
+      setIsSubmitting(false);
     }
   };
-
-  const clearFilter = () => {
-    setFilterCategory('');
-  };
-
-  const filteredAnnouncements = announcements.filter((announcement) => {
-    const matchesSearch = 
-      announcement.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      announcement.content.toLowerCase().includes(searchTerm.toLowerCase());
-    
-    const matchesCategory = filterCategory ? announcement.category === filterCategory : true;
-    
-    return matchesSearch && matchesCategory;
-  });
-
-  const categories: AnnouncementCategory[] = ['emergency', 'important', 'placement', 'event', 'general'];
   
-  // Find the announcement being edited
-  const announcementBeingEdited = editingAnnouncementId 
-    ? announcements.find(a => a.id === editingAnnouncementId) 
-    : undefined;
+  const handleEditAnnouncement = (id: string) => {
+    const announcement = announcements.find(a => a.id === id);
+    if (announcement) {
+      setEditingAnnouncement(announcement);
+      setIsFormOpen(true);
+    }
+  };
+  
+  const handleDeleteAnnouncement = (id: string) => {
+    deleteAnnouncement(id);
+    loadAnnouncements();
+    toast({
+      title: "Announcement Deleted",
+      description: "The announcement has been deleted.",
+    });
+  };
+  
+  const handleSaveAnnouncement = (id: string) => {
+    toast({
+      title: "Announcement Saved",
+      description: "The announcement has been saved to your bookmarks.",
+    });
+  };
+  
+  const handleShareAnnouncement = (id: string) => {
+    // In a real application, this would open a share dialog or copy a link
+    // For now, we'll just show a toast
+    toast({
+      title: "Share Link Copied",
+      description: "The announcement link has been copied to your clipboard.",
+    });
+  };
+  
+  const canCreateAnnouncements = viewMode === 'staff' || viewMode === 'admin';
+  
+  if (announcements.length === 0) {
+    return (
+      <div className="space-y-4">
+        {canCreateAnnouncements && (
+          <div className="flex justify-between items-center">
+            <h2 className="text-2xl font-bold">Announcements</h2>
+            <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
+              <DialogTrigger asChild>
+                <Button>
+                  <PlusCircle className="mr-2 h-4 w-4" />
+                  New Announcement
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="max-w-4xl">
+                <DialogHeader>
+                  <DialogTitle>
+                    {editingAnnouncement ? "Edit Announcement" : "Create New Announcement"}
+                  </DialogTitle>
+                </DialogHeader>
+                <AnnouncementForm 
+                  onSubmit={handleCreateAnnouncement}
+                  isSubmitting={isSubmitting}
+                  initialData={editingAnnouncement || undefined}
+                  isEditing={!!editingAnnouncement}
+                />
+              </DialogContent>
+            </Dialog>
+          </div>
+        )}
+        
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-xl">No Announcements Found</CardTitle>
+            <CardDescription>
+              There are no announcements available at the moment.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="flex items-center justify-center p-6">
+            <div className="flex flex-col items-center text-center">
+              <FileText className="h-16 w-16 text-muted-foreground mb-4" />
+              <p className="text-muted-foreground">
+                {canCreateAnnouncements
+                  ? 'Create a new announcement to share with everyone.'
+                  : 'Check back later for new announcements.'}
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-4">
-      {editingAnnouncementId && announcementBeingEdited ? (
-        <div className="space-y-4">
-          <Button 
-            variant="outline" 
-            onClick={() => setEditingAnnouncementId(null)}
-          >
-            Cancel Editing
-          </Button>
-          
-          <AnnouncementForm 
-            onSubmit={handleUpdateAnnouncement}
-            isEditing={true}
-            initialData={{
-              id: announcementBeingEdited.id,
-              title: announcementBeingEdited.title,
-              content: announcementBeingEdited.content,
-              category: announcementBeingEdited.category,
-              fileName: announcementBeingEdited.fileName
-            }}
-          />
-        </div>
-      ) : (
-        <>
-          <div className="flex flex-col md:flex-row gap-4">
-            <div className="relative flex-grow">
-              <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="Search announcements"
-                className="pl-8"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-              />
-            </div>
-            <div className="flex gap-2 flex-wrap">
-              <Button
-                variant="outline"
-                size="sm"
-                className="h-10 gap-1"
-                aria-label="Filter by category"
-              >
-                <Filter className="h-4 w-4" />
-                <span>Filter</span>
+      <div className="flex justify-between items-center">
+        <h2 className="text-2xl font-bold">Announcements</h2>
+        {canCreateAnnouncements && (
+          <Dialog open={isFormOpen} onOpenChange={(open) => {
+            setIsFormOpen(open);
+            if (!open) setEditingAnnouncement(null);
+          }}>
+            <DialogTrigger asChild>
+              <Button>
+                <PlusCircle className="mr-2 h-4 w-4" />
+                New Announcement
               </Button>
-              
-              <div className="flex gap-1 flex-wrap">
-                {categories.map((category) => (
-                  <Badge
-                    key={category}
-                    className={`cursor-pointer ${filterCategory === category ? 'bg-primary' : 'bg-secondary'}`}
-                    onClick={() => setFilterCategory(category)}
-                  >
-                    {category.charAt(0).toUpperCase() + category.slice(1)}
-                  </Badge>
-                ))}
-                
-                {filterCategory && (
-                  <Badge
-                    variant="outline"
-                    className="cursor-pointer flex items-center gap-1"
-                    onClick={clearFilter}
-                  >
-                    Clear <X className="h-3 w-3" />
-                  </Badge>
-                )}
-              </div>
-            </div>
-          </div>
-
-          {filteredAnnouncements.length === 0 ? (
-            <div className="text-center py-8 text-muted-foreground">
-              No announcements found.
-            </div>
-          ) : (
-            <div className="space-y-4">
-              {filteredAnnouncements.map((announcement) => (
-                <AnnouncementCard
-                  key={announcement.id}
-                  announcement={announcement}
-                  onSave={onSave ? handleSaveAnnouncement : undefined}
-                  onShare={handleShareAnnouncement}
-                  onEdit={onUpdate ? handleEditAnnouncement : undefined}
-                  onDelete={onDelete}
-                  currentUserId={profile?.id}
-                  role={effectiveRole}
-                />
-              ))}
-            </div>
-          )}
-        </>
-      )}
+            </DialogTrigger>
+            <DialogContent className="max-w-4xl">
+              <DialogHeader>
+                <DialogTitle>
+                  {editingAnnouncement ? "Edit Announcement" : "Create New Announcement"}
+                </DialogTitle>
+              </DialogHeader>
+              <AnnouncementForm 
+                onSubmit={handleCreateAnnouncement}
+                isSubmitting={isSubmitting}
+                initialData={editingAnnouncement || undefined}
+                isEditing={!!editingAnnouncement}
+              />
+            </DialogContent>
+          </Dialog>
+        )}
+      </div>
+      
+      {announcements.map((announcement) => (
+        <AnnouncementCard 
+          key={announcement.id}
+          announcement={announcement}
+          role={viewMode}
+          currentUserId={profile?.id}
+          onSave={viewMode === 'student' ? handleSaveAnnouncement : undefined}
+          onShare={handleShareAnnouncement}
+          onEdit={canCreateAnnouncements ? handleEditAnnouncement : undefined}
+          onDelete={canCreateAnnouncements ? handleDeleteAnnouncement : undefined}
+        />
+      ))}
     </div>
   );
 };

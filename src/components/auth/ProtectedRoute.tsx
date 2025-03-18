@@ -1,6 +1,8 @@
 
 import { Navigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
+import { useToast } from "@/hooks/use-toast";
+import { useEffect } from "react";
 
 type ProtectedRouteProps = {
   children: React.ReactNode;
@@ -9,6 +11,23 @@ type ProtectedRouteProps = {
 
 export default function ProtectedRoute({ children, role }: ProtectedRouteProps) {
   const { user, profile, loading } = useAuth();
+  const { toast } = useToast();
+
+  useEffect(() => {
+    if (!loading && !user) {
+      toast({
+        title: "Authentication Required",
+        description: `Please log in to access the ${role} dashboard.`,
+        variant: "destructive",
+      });
+    } else if (!loading && profile && profile.role !== role) {
+      toast({
+        title: "Access Denied",
+        description: `You don't have permission to access the ${role} dashboard.`,
+        variant: "destructive",
+      });
+    }
+  }, [loading, user, profile, role, toast]);
 
   // While checking authentication status, show a loading state
   if (loading) {
